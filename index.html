@@ -215,6 +215,8 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
   min-height:0;color:var(--ink-3)}
 .trait button:hover{color:var(--alert);background:none}
 .bonus.down{color:var(--alert)}
+.na{font-size:15px;color:var(--ink-3);letter-spacing:.06em}
+#heritagePick,#injuryPick{width:100%}
 .reading{white-space:pre;overflow-x:auto;font-size:12.5px;line-height:1.62;
   font-family:ui-monospace,Consolas,"Courier New",monospace;
   background:var(--panel);border:1px solid var(--rule);padding:13px}
@@ -249,7 +251,7 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
   <div>
     <img class="logo" id="logoImg" alt="When Dragons War">
     <h1>Character Sheet</h1>
-    <p class="rule-note">Thirteen attributes · 115 points · nothing above 20 · the year is 90 AC</p>
+    <p class="rule-note">Thirteen attributes · 1–40 scale · points by age · the year is 90 AC</p>
   </div>
   <button id="themeBtn" aria-pressed="false">Dark mode</button>
 </header>
@@ -323,7 +325,7 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
   <div class="tally">
     <h2>Points</h2>
     <table>
-      <tr><td>Starting</td><td id="tBase">115</td></tr>
+      <tr><td>Allowed by age</td><td id="tBase">115</td></tr>
       <tr><td>Awarded since</td><td id="tAward">0</td></tr>
       <tr><td>Spent</td><td id="tSpent">0</td></tr>
       <tr class="big"><td>Unspent</td><td id="tLeft">115</td></tr>
@@ -345,10 +347,24 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
     <label><input type="checkbox" id="f_anomaly"> Anomaly — admin only. Lifts a young body's limits.</label>
   </div>
   <p class="bonusnote" id="bonusNote" style="display:none"></p>
+  <div class="fields" style="margin-bottom:14px">
+    <div class="wide">
+      <label for="heritagePick">Heritage</label>
+      <select id="heritagePick"></select>
+      <p class="hint" id="heritageNote" style="display:none"></p>
+    </div>
+    <div class="wide">
+      <label for="injuryPick">Afflictions</label>
+      <select id="injuryPick"></select>
+      <div class="traitlist" id="injuryList"></div>
+    </div>
+  </div>
+  <p class="bonusnote" id="ageNote" style="display:none"></p>
+
   <div class="spreads">
     <label>A place to start</label>
     <div class="bar" id="spreads"></div>
-    <p class="hint">Known roads, each spending all 115. Change anything you like afterwards.</p>
+    <p class="hint">Known roads, trimmed to fit whatever the years allow. Change anything afterwards.</p>
   </div>
   <div class="traits">
     <div class="traithead">
@@ -840,9 +856,84 @@ var CMAP={}; COMMAND_TRAITS.forEach(function(t){ CMAP[t.id]=t; });
 var COMMAND_LIMIT = 2;
 
 /* ============================================================
+   HERITAGE — the blood a character was born with.
+   Most of it tells at arms, so the modifiers land on the
+   knight attributes. Valyrian blood shows in the face instead.
+   ============================================================ */
+var HERITAGES = [
+ {id:"first_men", name:"First Men",
+  core:{}, knight:{resolve:1, camaraderie:1},
+  note:"Old blood, older grudges. Steady, and steady with their own."},
+ {id:"andal", name:"Andal",
+  core:{}, knight:{skill:1, resolve:1},
+  note:"Seven-worshipping stock, drilled in the knightly craft."},
+ {id:"rhoynar", name:"Rhoynar",
+  core:{}, knight:{defense:1, skill:1},
+  note:"Water-born fighters, taught to turn a blade before landing one."},
+ {id:"valyrian", name:"Valyrian",
+  core:{beauty:10}, knight:{},
+  note:"Dragonlord blood. It shows in the face before it shows anywhere else."},
+ {id:"giant", name:"Giant-Blooded", north:true,
+  core:{}, knight:{strength:8, resolve:4, skill:-8, defense:-3},
+  note:"Unusually large, even for the North. Enormous power, and slow with it."}
+];
+var HMAP_H = {}; HERITAGES.forEach(function(h){ HMAP_H[h.id]=h; });
+
+/* ============================================================
+   AFFLICTIONS — wounds, losses and marks. As many as the story
+   has dealt. Nothing here is chosen for advantage.
+   ============================================================ */
+var INJURIES = [
+ {id:"blind",        name:"Blind",
+  core:{awareness:-10, martial:-8, archery:-10, athletics:-5}, knight:{}},
+ {id:"one_eye",      name:"One Eye",
+  core:{awareness:-3, archery:-3, martial:-2}, knight:{}},
+ {id:"missing_arm",  name:"Missing Arm",
+  core:{martial:-5, athletics:-5, archery:-8}, knight:{}},
+ {id:"missing_hand", name:"Missing Hand",
+  core:{martial:-6, archery:-7, athletics:-4}, knight:{}},
+ {id:"one_leg",      name:"One Leg",
+  core:{martial:-7, athletics:-8, awareness:-3}, knight:{}},
+ {id:"missing_foot", name:"Missing Foot",
+  core:{athletics:-5, martial:-4}, knight:{}},
+ {id:"deaf",         name:"Deaf",
+  core:{awareness:-5}, knight:{camaraderie:-3}},
+ {id:"mute",         name:"Mute",
+  core:{leadership:-2, charisma:-2}, knight:{}},
+ {id:"scarring",     name:"Severe Scarring",
+  core:{beauty:-5}, knight:{}},
+ {id:"disfigured_1", name:"Facial Disfigurement — slight",
+  core:{beauty:-3}, knight:{}},
+ {id:"disfigured_2", name:"Facial Disfigurement — marked",
+  core:{beauty:-6}, knight:{}},
+ {id:"disfigured_3", name:"Facial Disfigurement — ruinous",
+  core:{beauty:-10}, knight:{}},
+ {id:"fingers",      name:"Missing Fingers",
+  core:{archery:-2}, knight:{skill:-2}}
+];
+var IMAP = {}; INJURIES.forEach(function(i){ IMAP[i.id]=i; });
+
+/* ============================================================
+   AGE — the body gives out long before the mind does.
+   ============================================================ */
+var DECLINE = [
+ {from:50, to:59, core:{athletics:-1}},
+ {from:60, to:69, core:{athletics:-4}},
+ {from:70, to:79, core:{athletics:-12, martial:-3}},
+ {from:80, to:999, core:{}, retired:["athletics","martial"]}
+];
+/* How many points the years allow you to spend. */
+function pointsForAge(a){
+  if(a === null) return 115;
+  if(a < 16) return 39;
+  if(a < 18) return 70;
+  return 115;
+}
+
+/* ============================================================
    ATTRIBUTES
    ============================================================ */
-var BASE = 115, MAX = 20, PRE = "sheet13.";
+var BASE = 115, MAX = 40, PRE = "sheet13.";
 var KNIGHT_GATE = 16;          // Martial needed to open the knight sheet
 var KNIGHT_CAP = 50;           // default ceiling on a single knight attribute
 var KNIGHT_CAP_MAX = 100;      // admins may raise a cap this far
@@ -884,30 +975,30 @@ var KNIGHT = [
 var STATS = [
  {key:"charisma",abbr:"CHA",name:"Charisma",blurb:"Social influence and personal presence.",
   tiers:["No presence","Cold and stiff","Plain-spoken","Well-liked","Silver-tongued","Beloved in the hall","Turns a council","The realm listens"]},
+ {key:"deception",abbr:"DEC",name:"Deception",blurb:"Lying, disguises, misinformation, concealment.",
+  tiers:["An open book","Poor liar","Passable","Convincing","Practiced liar","Wears any face","Master of guises","None see through you"]},
+ {key:"beauty",abbr:"BEA",name:"Beauty",blurb:"Physical attractiveness, appearance, and aesthetic presence.",
+  tiers:["Hard to look upon","Weathered","Plain","Pleasant","Comely","Striking","Breathtaking","A beauty worth songs"]},
  {key:"intelligence",abbr:"INT",name:"Intelligence",blurb:"Reasoning, learning, problem-solving.",
   tiers:["Slow to grasp","Dull-witted","Simple but steady","Quick enough","Sharp mind","Keen reasoner","A maester's mind","Mind of many links"]},
+ {key:"knowledge",abbr:"KNW",name:"Knowledge",blurb:"History, law, religion, geography, warfare, heraldry.",
+  tiers:["Unlettered","Barely read","Knows the songs","Well-read","Learned","Scholar","Loremaster","A living library"]},
+ {key:"awareness",abbr:"AWR",name:"Awareness",blurb:"Perception, observation, danger sense, information.",
+  tiers:["Oblivious","Half-watching","Attentive","Sharp-eyed","Watchful","Little escapes you","Reads a room","Eyes of the realm"]},
  {key:"intrigue",abbr:"INR",name:"Intrigue",blurb:"Scheming, manipulation, espionage, politics.",
   tiers:["Guileless","Easily played","Careful whisperer","Keeps secrets","Player of the game","Weaver of webs","Spymaster","The board is yours"]},
- {key:"martial",abbr:"MAR",name:"Martial",blurb:"Personal combat and battlefield ability.",
-  tiers:["Never held steel","Untrained","Levy spearman","Man-at-arms","Seasoned fighter","Knight of renown","Champion","Terror of the field"]},
  {key:"leadership",abbr:"LED",name:"Leadership",blurb:"Command, discipline, inspiration, authority.",
   tiers:["Followed by none","Overlooked","Trusted by a few","Serjeant","Captain","Commander","Warlord","Men die gladly for you"]},
  {key:"stewardship",abbr:"STW",name:"Stewardship",blurb:"Money, estates, taxes, supplies, administration.",
   tiers:["Ruinous","Spendthrift","Rough accounting","Steady ledger","Able steward","Master of coin","Architect of wealth","Coffers never empty"]},
- {key:"deception",abbr:"DEC",name:"Deception",blurb:"Lying, disguises, misinformation, concealment.",
-  tiers:["An open book","Poor liar","Passable","Convincing","Practiced liar","Wears any face","Master of guises","None see through you"]},
- {key:"awareness",abbr:"AWR",name:"Awareness",blurb:"Perception, observation, danger sense, information.",
-  tiers:["Oblivious","Half-watching","Attentive","Sharp-eyed","Watchful","Little escapes you","Reads a room","Eyes of the realm"]},
+ {key:"martial",abbr:"MAR",name:"Martial",blurb:"Personal combat ability and battlefield ability.",
+  tiers:["Never held steel","Untrained","Levy spearman","Man-at-arms","Seasoned fighter","Knight of renown","Champion","Terror of the field"]},
+ {key:"archery",abbr:"ARC",name:"Archery",blurb:"Accuracy, range estimation, firing speed, use of bows.",
+  tiers:["Never drawn a bow","Poor aim","Can hit a barn","Steady shot","Marksman","Deadeye","Master archer","Every arrow finds its mark"]},
  {key:"athletics",abbr:"ATH",name:"Natural Athletics",blurb:"Strength, endurance, speed, agility, climbing, swimming.",
   tiers:["Frail","Soft","Sound of body","Hale","Hardy","Swift and strong","Tireless","Built of iron"]},
  {key:"medicine",abbr:"MED",name:"Medicine",blurb:"Healing, surgery, illness, wounds, anatomy.",
-  tiers:["Squeamish","Rough bandaging","Knows a poultice","Field healer","Practiced healer","Learned physician","A silver link","Cheats the Stranger"]},
- {key:"knowledge",abbr:"KNW",name:"Knowledge",blurb:"History, law, religion, geography, warfare, heraldry.",
-  tiers:["Unlettered","Barely read","Knows the songs","Well-read","Learned","Scholar","Loremaster","A living library"]},
- {key:"archery",abbr:"ARC",name:"Archery",blurb:"Accuracy, range estimation, firing speed, use of bows.",
-  tiers:["Never drawn a bow","Poor aim","Can hit a barn","Steady shot","Marksman","Deadeye","Master archer","Every arrow finds its mark"]},
- {key:"beauty",abbr:"BEA",name:"Beauty",blurb:"Features, bearing, first impression.",
-  tiers:["Hard to look upon","Weathered","Plain","Pleasant","Comely","Striking","Breathtaking","A beauty worth songs"]}
+  tiers:["Squeamish","Rough bandaging","Knows a poultice","Field healer","Practiced healer","Learned physician","A silver link","Cheats the Stranger"]}
 ];
 var FIELDS = ["name","station","house","age","gender","height","born","region","seat",
               "titles","words","sigil","player","father","mother","spouse","liege"];
@@ -917,9 +1008,9 @@ var LINEAGE = ["father","mother","spouse","liege"];
    even then only as far as Hale. */
 var PHYSICAL = { martial:1, athletics:1, archery:1 };
 var YOUTH_CAPS = [
-  { upto:12, cap:8,  anomaly:12, label:"child" },
-  { upto:15, cap:12, anomaly:16, label:"youth" },
-  { upto:17, cap:16, anomaly:18, label:"almost grown" }
+  { upto:12, cap:16, anomaly:24, label:"child" },
+  { upto:15, cap:24, anomaly:32, label:"youth" },
+  { upto:17, cap:32, anomaly:36, label:"almost grown" }
 ];
 var VALYRIAN_HOUSES = { "Targaryen":1, "Velaryon":1, "Celtigar":1 };
 
@@ -961,6 +1052,7 @@ function blank(){
   var c = { id:uid(), v:4, year:YEAR, awarded:0, base:BASE, approval:"", scores:{}, log:[],
             knight:{}, knightAwarded:0, knightOverall:36, knightCap:KNIGHT_CAP, prodigy:false,
             portrait:"", appearance:"", traits:[], command:[],
+            heritage:"", injuries:[],
             valyrian:false, anomaly:false, lineageLocked:false,
             created:new Date().toISOString() };
   FIELDS.forEach(function(f){ c[f]=""; });
@@ -1108,6 +1200,7 @@ function youthBand(){
 }
 /* The highest this character may buy in a given attribute. */
 function capFor(key){
+  if(isRetired(key)) return 0;
   if(!PHYSICAL[key]) return MAX;
   var band = youthBand();
   if(!band) return MAX;
@@ -1120,23 +1213,35 @@ function traitList(){
 function bonusFor(key){
   var b = 0;
   if(key === "knowledge" && isGreatHouse()) b += 5;
-  if(key === "beauty" && isValyrian()) b += 10;
+  if(key === "beauty" && isValyrian() && cur.heritage !== "valyrian") b += 10;
   if(key === "athletics" && isBaratheonMan()) b += 6;
   traitList().forEach(function(t){
     if(t.plus === key) b += TRAIT_PLUS;
     if(t.minus === key) b += TRAIT_MINUS;
   });
+  var h=heritage();
+  if(h && h.core[key]) b += h.core[key];
+  injuryList().forEach(function(i){ if(i.core[key]) b += i.core[key]; });
+  var d=declineBand();
+  if(d && d.core[key]) b += d.core[key];
   return b;
 }
 function athleticsStep(){ return Math.floor(total("athletics") / 5) * 2; }
 function knightBonusFor(key){
-  if(key === "strength" || key === "defense") return athleticsStep();
-  return 0;
+  var b = 0;
+  if(key === "strength" || key === "defense") b += athleticsStep();
+  var h=heritage();
+  if(h && h.knight[key]) b += h.knight[key];
+  injuryList().forEach(function(i){ if(i.knight && i.knight[key]) b += i.knight[key]; });
+  return b;
 }
 function total(key){
+  if(isRetired(key)) return 0;
   return Math.max(0, Math.min(MAX, (cur.scores[key]||0) + bonusFor(key)));
 }
-function knightTotal(key){ return (cur.knight[key]||0) + knightBonusFor(key); }
+function knightTotal(key){
+  return Math.max(0, Math.min(knightCap(), (cur.knight[key]||0) + knightBonusFor(key)));
+}
 function knightUnlocked(){ return total("martial") >= KNIGHT_GATE; }
 function knightRating(){ return Math.max(0, Math.min(99, cur.knightOverall||0)); }
 function knightCap(){ return Math.max(1, Math.min(KNIGHT_CAP_MAX, cur.knightCap||KNIGHT_CAP)); }
@@ -1174,10 +1279,10 @@ function knightTier(v){
   return Math.max(1, Math.min(7, Math.ceil(v / cap * 7)));
 }
 
-function budget(){ return BASE + (cur.awarded||0); }
+function budget(){ return pointsForAge(ageNum()) + (cur.awarded||0); }
 function spent(){ return STATS.reduce(function(t,s){ return t+cur.scores[s.key]; },0); }
 function left(){ return budget()-spent(); }
-function tierOf(v){ return v===0?0:Math.min(7,Math.floor((v-1)/3)+1); }
+function tierOf(v){ return v<=0 ? 0 : Math.max(1, Math.min(7, Math.ceil(v / MAX * 7))); }
 function stamp(){ var d=new Date(), p=function(n){ return (n<10?"0":"")+n; };
   return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes()); }
 function record(what,delta,note){
@@ -1343,8 +1448,12 @@ function render(){
     var hard=capFor(s.key), ceil=Math.min(MAX,hard,v0(s.key)+remaining);
     var v=cur.scores[s.key];
     var b=bonusFor(s.key), t=v+b;
-    $("num-"+s.key).innerHTML = t +
-      (b ? '<span class="bonus'+(b<0?" down":"")+'">'+(b>0?"+":"")+b+'</span>' : "");
+    if(isRetired(s.key)){
+      $("num-"+s.key).innerHTML = '<span class="na">N/A</span>';
+    } else {
+      $("num-"+s.key).innerHTML = t +
+        (b ? '<span class="bonus'+(b<0?" down":"")+'">'+(b>0?"+":"")+b+'</span>' : "");
+    }
     $("num-"+s.key).className="num"+(t===0?" zero":"");
     $("rank-"+s.key).textContent = s.tiers[tierOf(t)] +
       (b ? "  ·  "+v+" bought, +"+b+" granted" : "") +
@@ -1361,13 +1470,14 @@ function render(){
   shape.setAttribute("points",STATS.map(function(s,i){
     return at(i,(Math.min(total(s.key),MAX)/MAX)*R).map(function(n){ return n.toFixed(1); }).join(","); }).join(" "));
   shape.setAttribute("class","shape"+(over?" over":""));
-  $("tBase").textContent=BASE;
+  $("tBase").textContent=pointsForAge(ageNum());
   $("tAward").textContent=(cur.awarded>0?"+":"")+(cur.awarded||0);
   $("tSpent").textContent=spent();
   $("tLeft").textContent=remaining;
   $("page").className="page"+(over?" over":"");
   drawComposition("compBar","compList",STATS,function(k){ return total(k); });
-  renderTraits(); renderYouthNote(); renderBonusNote(); renderKnight(); renderLock();
+  renderTraits(); renderHeritage(); renderYouthNote(); renderBonusNote();
+  renderKnight(); renderLock();
   renderReading();
   $("sheet").textContent=sheetText();
 }
@@ -1395,6 +1505,80 @@ function drawComposition(barId, listId, defs, valueOf){
     }).join("");
 }
 
+/* ---------------- heritage and afflictions ---------------- */
+function northernHouse(){
+  var h=lookupHouse(cur.house);
+  return !!(h && h.r==="The North");
+}
+(function(){
+  var sel=$("heritagePick");
+  sel.innerHTML='<option value="">Not set</option>'+HERITAGES.map(function(h){
+    return '<option value="'+h.id+'">'+h.name+(h.north?" — the North only":"")+'</option>';
+  }).join("");
+  var isel=$("injuryPick");
+  isel.innerHTML='<option value="">Add an affliction…</option>'+INJURIES.map(function(i){
+    var bits=[];
+    for(var k in i.core) bits.push((i.core[k]>0?"+":"")+i.core[k]+" "+attrName(k));
+    for(var k2 in (i.knight||{})) bits.push((i.knight[k2]>0?"+":"")+i.knight[k2]+" "+knightLabel(k2));
+    return '<option value="'+i.id+'">'+i.name+' — '+bits.join(", ")+'</option>';
+  }).join("");
+})();
+$("heritagePick").addEventListener("change",function(){
+  var id=this.value, h=HMAP_H[id];
+  if(h && h.north && !northernHouse()){
+    alert("Giant-blooded is for the North alone. Set a northern house first.");
+    this.value=cur.heritage||""; return;
+  }
+  var from=cur.heritage ? HMAP_H[cur.heritage].name : "none";
+  cur.heritage=id;
+  record("Heritage "+from+" \u2192 "+(h?h.name:"none"), 0, "");
+  render();
+});
+$("injuryPick").addEventListener("change",function(){
+  var id=this.value; this.value=""; if(!id) return;
+  cur.injuries=cur.injuries||[];
+  if(cur.injuries.indexOf(id)>-1) return;
+  cur.injuries.push(id);
+  record("Affliction — "+IMAP[id].name, 0, "");
+  render();
+});
+$("injuryList").addEventListener("click",function(e){
+  var id=e.target.getAttribute("data-idrop"); if(!id) return;
+  cur.injuries=(cur.injuries||[]).filter(function(x){ return x!==id; });
+  record("Affliction healed — "+IMAP[id].name, 0, "");
+  render();
+});
+function renderHeritage(){
+  $("heritagePick").value=cur.heritage||"";
+  var h=heritage();
+  $("heritageNote").textContent = h ? h.note : "";
+  $("heritageNote").style.display = h ? "" : "none";
+
+  var list=injuryList(), box=$("injuryList");
+  box.innerHTML = list.length
+    ? list.map(function(i){
+        var bits=[];
+        for(var k in i.core) bits.push(i.core[k]+" "+attrName(k));
+        for(var k2 in (i.knight||{})) bits.push(i.knight[k2]+" "+knightLabel(k2));
+        return '<span class="trait"><b>'+esc(i.name)+'</b>'+
+          '<span class="down">'+esc(bits.join(", "))+'</span>'+
+          '<button data-idrop="'+i.id+'" aria-label="Remove '+esc(i.name)+'">&times;</button></span>';
+      }).join("")
+    : '<span class="cnone">None.</span>';
+
+  var d=declineBand(), el=$("ageNote");
+  if(!d){ el.style.display="none"; return; }
+  el.style.display="";
+  if(d.retired){
+    el.innerHTML="Past eighty. <b>Natural Athletics and Martial no longer apply</b> — "+
+      "whatever this one was, the body is done with it.";
+  } else {
+    var bits=[];
+    for(var k in d.core) bits.push(d.core[k]+" "+attrName(k));
+    el.innerHTML="Aged "+ageNum()+" — the years take <b>"+bits.join(", ")+"</b>.";
+  }
+}
+
 /* ---------------- a place to start ----------------
    Each spread spends all 115. Caps still apply, so a child
    taking the warrior's road will have it trimmed to fit. */
@@ -1411,9 +1595,10 @@ var SPREADS = {
     var b=document.createElement("button"); b.type="button"; b.textContent=name;
     b.onclick=function(){
       if(spent()>0 && !confirm("Replace the current spread with "+name+"?")) return;
-      SPREADS[name].forEach(function(v,i){
-        var k=STATS[i].key;
-        cur.scores[k]=Math.min(v, capFor(k));
+      var allow=budget(), scale=Math.min(1, allow/115);
+      STATS.forEach(function(s,i){
+        var v=Math.round((SPREADS[name][i]||0)*scale);
+        cur.scores[s.key]=Math.min(v, capFor(s.key));
       });
       record("Took a known road — "+name, 0, "");
       render();
@@ -1848,7 +2033,7 @@ function readingText(){
            : "Balanced, leaning "+ranked[0].s.name;
   out.push("\nBUILD: "+kind);
   out.push("Points: "+spent()+" of "+budget()+" spent"+
-    (left()?", "+left()+" unspent":"")+".");
+    (left()?", "+left()+" unspent":"")+". Ceiling "+MAX+" each.");
 
   /* every attribute, in order, with the share of the total */
   out.push("\nATTRIBUTES");
@@ -1862,11 +2047,38 @@ function readingText(){
 
   /* where the bonuses came from */
   var g=[];
+  var hh=heritage();
+  if(hh){
+    var hb=[];
+    for(var k in hh.core) hb.push((hh.core[k]>0?"+":"")+hh.core[k]+" "+attrName(k));
+    for(var k2 in hh.knight) hb.push((hh.knight[k2]>0?"+":"")+hh.knight[k2]+" "+knightLabel(k2));
+    g.push("Heritage — "+hh.name+(hb.length?": "+hb.join(", "):""));
+  }
   if(isGreatHouse()) g.push("Great house: +5 Knowledge");
   if(isValyrian()) g.push("Valyrian descent: +10 Beauty");
   if(isBaratheonMan()) g.push("Baratheon blood: +6 Natural Athletics");
   if(cur.anomaly) g.push("Anomaly: youth caps raised");
   if(g.length) out.push("\nGRANTED\n"+g.join("\n"));
+
+  var il=injuryList();
+  if(il.length){
+    out.push("\nAFFLICTIONS");
+    il.forEach(function(i){
+      var bits=[];
+      for(var k in i.core) bits.push(i.core[k]+" "+attrName(k));
+      for(var k2 in (i.knight||{})) bits.push(i.knight[k2]+" "+knightLabel(k2));
+      out.push(i.name+": "+bits.join(", "));
+    });
+  }
+  var dcl=declineBand();
+  if(dcl){
+    if(dcl.retired) out.push("\nAGE: past eighty — Natural Athletics and Martial no longer apply.");
+    else {
+      var db=[];
+      for(var k3 in dcl.core) db.push(dcl.core[k3]+" "+attrName(k3));
+      out.push("\nAGE: "+db.join(", "));
+    }
+  }
 
   var tl=traitList();
   if(tl.length){
@@ -1991,6 +2203,7 @@ $("portraitPick").onclick=function(){ $("portraitFile").click(); };
       if(cur.id===old) cur=c; }
   });
   if(!cur.station) cur.station="Noble house";
+  if(!cur.injuries) cur.injuries=[];
   if(cur.base && cur.base!==BASE) cur.base=BASE;
   Store.put(cur); Store.pref("current",cur.id);
   if(!canSave) $("notice").style.display="block";
@@ -2066,11 +2279,6 @@ Cloud.push = function(c){
     player: c.player||"", liege: c.liege||"",
     father: c.father||"", mother: c.mother||"", spouse: c.spouse||"",
     base: c.base||BASE, awarded: c.awarded||0, scores: c.scores,
-    knight: c.knight||{}, knight_awarded: c.knightAwarded||0,
-    knight_overall: c.knightOverall||0, knight_cap: c.knightCap||KNIGHT_CAP,
-    traits: c.traits||[], command: c.command||[], anomaly: !!c.anomaly,
-    appearance: c.appearance||"", valyrian: !!c.valyrian,
-    lineage_locked: !!c.lineageLocked,
     needs_approval: !!c.approval
   };
   Cloud.sb.from("characters").upsert(row).then(function(r){
