@@ -169,10 +169,20 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
   font-family:system-ui,sans-serif}
 .ladder li{padding:1px 0}
 .ladder b{color:var(--ink-2)}
-.kbar{background:var(--empty);display:block;position:relative;height:22px}
+.kctrl{grid-column:1/3;display:flex;align-items:center;gap:10px;margin-top:8px;
+  width:100%;min-width:0}
+.kctrl button{width:40px;height:34px;min-height:34px;padding:0;font-size:18px;line-height:1;flex:none}
+.kbar{position:relative;flex:1 1 0;min-width:0;width:auto;height:22px;
+  background:var(--empty);overflow:hidden}
 .kbar .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--fill)}
-.kbar::after{content:"";position:absolute;top:0;bottom:0;left:var(--ceil,100%);right:0;
-  background:var(--capped)}
+.kbar .capz{position:absolute;right:0;top:0;bottom:0;width:0;background:var(--capped)}
+.kbar input[type=range]{position:absolute;left:0;top:0;width:100%;height:100%;
+  margin:0;padding:0;border:0;background:transparent;opacity:0;cursor:pointer;
+  -webkit-appearance:none;appearance:none}
+.kbar input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:22px}
+.kbar input[type=range]::-moz-range-thumb{width:26px;height:22px;border:0;opacity:0}
+.kbar:has(input:focus-visible){outline:2px solid var(--ink);outline-offset:2px}
+#knightRoll .stat{grid-template-columns:1fr auto;overflow:hidden}
 .comp{margin:4px 0 16px}
 .compbar{display:flex;height:12px;background:var(--empty);overflow:hidden}
 .compbar .seg{display:block;height:100%}
@@ -1215,12 +1225,17 @@ var kroll=$("knightRoll");
 KNIGHT.forEach(function(s){
   var row=document.createElement("div"); row.className="stat"; row.title=s.blurb;
   row.innerHTML='<div class="name">'+s.name+'</div><div class="num" id="knum-'+s.key+'">0</div>'+
-    '<div class="rank" id="krank-'+s.key+'"></div><div class="ctrl">'+
-    '<button data-kdec="'+s.key+'" aria-label="Lower '+s.name+'">&minus;</button>'+
-    '<div class="track kbar" id="ktrack-'+s.key+'"><span class="fill" id="kfill-'+s.key+'"></span>'+
-    '<input type="range" min="0" max="'+KNIGHT_CAP_MAX+'" step="1" value="0" id="krange-'+s.key+
-    '" aria-label="'+s.name+'"></div>'+
-    '<button data-kinc="'+s.key+'" aria-label="Raise '+s.name+'">+</button></div>';
+    '<div class="rank" id="krank-'+s.key+'"></div>'+
+    '<div class="kctrl">'+
+      '<button data-kdec="'+s.key+'" aria-label="Lower '+s.name+'">&minus;</button>'+
+      '<div class="kbar" id="ktrack-'+s.key+'">'+
+        '<span class="fill" id="kfill-'+s.key+'"></span>'+
+        '<span class="capz" id="kcapz-'+s.key+'"></span>'+
+        '<input type="range" min="0" max="100" step="1" value="0" id="krange-'+s.key+
+        '" aria-label="'+s.name+'">'+
+      '</div>'+
+      '<button data-kinc="'+s.key+'" aria-label="Raise '+s.name+'">+</button>'+
+    '</div>';
   kroll.appendChild(row);
 });
 KNIGHT.forEach(function(s){
@@ -1275,8 +1290,8 @@ function renderKnight(){
     $("krank-"+s.key).textContent = s.tiers[knightTier(t)] +
       (b ? "  ·  "+v+" bought, +"+b+" from Athletics" : "");
     var r=$("krange-"+s.key); r.max=cap; r.value=v;
-    $("kfill-"+s.key).style.width = (t/cap*100)+"%";
-    $("ktrack-"+s.key).style.setProperty("--ceil", (ceil/cap*100)+"%");
+    $("kfill-"+s.key).style.width = Math.min(100, t/cap*100) + "%";
+    $("kcapz-"+s.key).style.width = Math.max(0, 100 - ceil/cap*100) + "%";
     document.querySelector('[data-kdec="'+s.key+'"]').disabled = v===0;
     document.querySelector('[data-kinc="'+s.key+'"]').disabled = v>=ceil;
     var p=kat(i,(t/cap)*KR);
