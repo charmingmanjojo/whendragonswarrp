@@ -215,7 +215,9 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
   min-height:0;color:var(--ink-3)}
 .trait button:hover{color:var(--alert);background:none}
 .bonus.down{color:var(--alert)}
-.reading{white-space:pre-line;font-size:16px;line-height:1.65;max-width:64ch}
+.reading{white-space:pre;overflow-x:auto;font-size:12.5px;line-height:1.62;
+  font-family:ui-monospace,Consolas,"Courier New",monospace;
+  background:var(--panel);border:1px solid var(--rule);padding:13px}
 .rlen{font-size:12px;color:var(--ink-3);align-self:center;font-family:system-ui,sans-serif}
 .archlist{display:grid;gap:10px;grid-template-columns:1fr}
 @media(min-width:640px){.archlist{grid-template-columns:1fr 1fr}}
@@ -459,10 +461,10 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
 </section>
 
 <section>
-  <h2>The reading</h2>
+  <h2>Build summary</h2>
   <p class="reading" id="reading"></p>
   <div class="bar" style="margin-top:12px">
-    <button id="readingCopy">Copy the reading</button>
+    <button id="readingCopy">Copy build summary</button>
     <span class="rlen" id="readingLen"></span>
   </div>
 </section>
@@ -773,78 +775,7 @@ var TRAITS = [
 var TRAIT_PLUS = 5, TRAIT_MINUS = -2;
 var TMAP = {}; TRAITS.forEach(function(t){ TMAP[t.id]=t; });
 
-/* What each trait says about a person, for the reading. */
-var TRAIT_LINE = {
- silver_tongued:"you talk your way through doors that were meant to stay shut, though the lie beneath the charm is thinner than you think",
- commanding:"you fill a room simply by entering it, and have never learned the patience that quiet scheming asks",
- charming:"people warm to you quickly, which is not the same as following you",
- genius:"your mind outruns every other in the hall, while your body lags well behind",
- quick_learner:"you take to any craft in half the time it takes another, save the one that needs calluses",
- analytical:"you see the shape of a problem clearly and the feelings of the man presenting it not at all",
- mastermind:"you plan three seasons ahead and let others carry the steel",
- schemer:"you would rather move a man than command him",
- conspirator:"you work best in whispers, and lose something in open daylight",
- warlord:"war is the thing you were built for; ledgers rot while you ride",
- duelist:"one to one there are few better, though a line of men is not a duel",
- veteran:"you have survived what killed better men, and learned to distrust cleverness",
- natural_leader:"men follow you without asking why, and you have never needed a knife in the dark",
- inspirational:"you lift the men around you higher than they had any right to climb, and cannot bring yourself to lie to them",
- commander:"you handle an army well and a granary poorly",
- administrator:"the estate runs like a mill under your hand while your sword gathers dust",
- merchant:"you know the price of everything, and have never much cared for arms",
- builder:"you leave stone behind you rather than intrigue",
- master_liar:"you lie beautifully, though people trust you a little less each year",
- disguiser:"you can be anyone, and are so busy watching yourself that you miss what others do",
- misinformer:"a rumour in your hands becomes a weapon, but truth from your mouth carries less weight",
- keen_eyed:"nothing crosses a room unnoticed by you, and you have never been much liked for it",
- perceptive:"you read people plainly, and have no taste for playing them",
- watchful:"you notice everything and outrun nothing",
- athletic:"your body is your instrument, and books were never it",
- powerful:"there is raw strength in you that makes men step aside, though it makes you slow to notice things",
- swift:"you are quick over ground and quick to lose track of coin",
- physician:"you have saved more lives than you have taken, by some distance",
- surgeon:"your hands are steady over a wound, less steady over a long march",
- herbalist:"you know which leaf kills and which cures, and little of what things cost",
- scholar:"you have read more than most maesters and ridden less than most stableboys",
- historian:"you know every war ever fought and have fought in none",
- lorekeeper:"you carry the realm's memory and struggle to make anyone listen to it",
- marksman:"at range there are few better, though close work is not yours",
- hawkeye:"your eye is extraordinary and your legs merely adequate",
- hunter:"you can feed a household from the woods and cannot balance its books",
- beautiful:"songs find you easily, hard labour does not",
- striking:"heads turn when you pass, though not toward a battlefield",
- alluring:"you draw people in, and are often too pleased by it to notice who is watching"
-};
-
 /* Strength and failing, per attribute, for the reading. */
-var READ = {
- charisma:["A hall turns when you speak, and men who came to argue leave having agreed",
-           "Words come out wrong, or not at all; you are easier to respect than to like"],
- intelligence:["You think three moves past the man across the table",
-           "Plans slip through your fingers; you are better served by advisors than by your own reckoning"],
- intrigue:["You keep a ledger of secrets and know exactly what each one is worth",
-           "You take people at their word, which in this realm is a wound waiting to happen"],
- martial:["Steel sits easy in your hand, and few who cross you try it twice",
-           "You are no use in a melee and know it — better kept behind walls when swords come out"],
- leadership:["Men hold the line longer than they should, because it is you who asked",
-           "Command sits badly on you; orders given are orders questioned"],
- stewardship:["Granaries stay full and ledgers balance under your hand",
-           "Coin runs through your fingers like water, and your steward despairs of you"],
- deception:["You lie the way other men breathe, and are believed",
-           "Your face betrays you long before your tongue can help"],
- awareness:["Little escapes you — the shifted guard, the untouched cup, the name said too carefully",
-           "The world moves around you unnoticed; you are always the last to know"],
- athletics:["You are hard-wearing and quick over ground, still standing when better men have sat down",
-           "Your body fails you early; a long ride leaves you wrecked"],
- medicine:["You have pulled men back from the Stranger's door with needle and poultice",
-           "The sight of an open wound turns your stomach"],
- knowledge:["You have read more than most maesters, and remember it",
-           "Letters and lineages blur together; you know the songs and little else"],
- archery:["At two hundred paces you do not miss",
-           "A bow in your hands is a danger chiefly to your own people"],
- beauty:["Singers have decided you are worth a verse",
-           "Yours is a face the smallfolk remember for the wrong reasons"]
-};
 
 /* ============================================================
    ARCHETYPES — what two strong attributes make together.
@@ -1469,7 +1400,6 @@ function drawComposition(barId, listId, defs, valueOf){
    taking the warrior's road will have it trimmed to fit. */
 var SPREADS = {
  "Warrior lord":   [10,8,5,18,15,8,4,11,16,4,7,5,4],
- "Master of whispers":[10,14,19,3,6,7,17,16,5,3,8,2,5],
  "Maester":        [9,19,6,2,5,12,4,13,4,19,19,1,2],
  "Lady of the court":[18,12,15,2,9,12,15,12,4,3,8,1,4],
  "Lord commander": [10,10,6,14,19,10,4,12,12,4,8,3,3],
@@ -1614,13 +1544,12 @@ $("traitList").addEventListener("click",function(e){
   render();
 });
 function traitWaste(){
-  var lost=[];
+  var seen={}, lost=[];
   traitList().forEach(function(t){
+    if(seen[t.plus]) return;            // two traits on one attribute waste once, not twice
+    seen[t.plus]=1;
     var raw=(cur.scores[t.plus]||0)+bonusFor(t.plus);
-    if(raw>MAX){
-      var s=STATS.filter(function(x){ return x.key===t.plus; })[0];
-      lost.push((s?s.name:t.plus)+" is over the ceiling by "+(raw-MAX));
-    }
+    if(raw>MAX) lost.push(attrName(t.plus)+" over the ceiling by "+(raw-MAX));
   });
   return lost;
 }
@@ -1890,149 +1819,104 @@ $("resetBtn").onclick=function(){
 /* ============================================================
    THE READING — what the realm makes of a finished build.
    ============================================================ */
-var ONES=["","one","two","three","four","five","six","seven","eight","nine","ten",
- "eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen"];
-var TENS={20:"twenty",30:"thirty",40:"forty",50:"fifty",60:"sixty",70:"seventy",80:"eighty",90:"ninety"};
-function ageWords(n){
-  if(!n) return "";
-  if(n<20) return ONES[n];
-  var t=Math.floor(n/10)*10, o=n%10;
-  return o ? ONES[o]+"-and-"+TENS[t] : TENS[t];
-}
-function bandOf(t){ return t>=15 ? "high" : (t<=5 ? "low" : "mid"); }
-
+function pct(n){ return Math.round(n)+"%"; }
 function readingText(){
-  var name=(cur.name||"").trim(), house=(cur.house||"").trim();
-  var h=lookupHouse(house), age=ageNum(), out=[];
+  var out=[], line;
 
-  /* --- the styling --- */
-  var who=name||"A nameless one";
-  if(house) who += TITLED[cur.station] ? " of House "+house : " "+house;
-  var bits=[];
-  if(h && h.s && TITLED[cur.station]) bits.push("of "+h.s);
-  if(age) bits.push(ageWords(age)+" years old");
-  if(cur.station && cur.station!=="Noble house"){
-    var st=cur.station.toLowerCase();
-    bits.push(/folk$/.test(st) ? "of the "+st
-      : st==="essosi" ? "Essosi-born"
-      : (/^[aeiou]/.test(st) ? "an " : "a ")+st);
-  }
-  out.push(who + (bits.length ? ", "+bits.join(", ") : "") +
-    ", in the year "+YEAR+" after the Conquest.");
-  if(cur.words) out.push("Your words are "+cur.words+".");
-  if(h && h.r) out.push("You answer to "+h.r.replace(/^The /,"the ")+
-    (INDEPENDENT[h.r] ? ", which bends the knee to no Iron Throne in this year" : "")+".");
+  /* heading */
+  var who=(cur.name||"Unnamed");
+  if(cur.house) who += TITLED[cur.station] ? " of House "+cur.house : " "+cur.house;
+  var meta=[];
+  if(cur.age) meta.push(cur.age);
+  if(cur.gender) meta.push(cur.gender);
+  if(cur.station) meta.push(cur.station);
+  if(cur.seat) meta.push(cur.seat);
+  if(cur.height) meta.push(cur.height);
+  out.push(who);
+  if(meta.length) out.push(meta.join(" · "));
+  out.push(YEAR+" AC");
 
   var ranked=STATS.map(function(s){ return {s:s,t:total(s.key)}; })
     .sort(function(a,b){ return b.t-a.t; });
-  var spent=STATS.reduce(function(a,s){ return a+total(s.key); },0);
-  if(!spent) return out.join("\n")+"\n\nNothing is spent yet. Give yourself a shape and the reading will follow.";
-  var topShare = ranked[0].t/spent;
+  var sum=ranked.reduce(function(a,r){ return a+r.t; },0);
+  if(!sum) return out.join("\n")+"\n\nNo points spent.";
 
-  var strong=ranked.filter(function(r){ return r.t>=10; }).slice(0,3);
-  var weak=ranked.slice().reverse().filter(function(r){ return r.t<=6; }).slice(0,3);
-  var mid=ranked.filter(function(r){ return r.t>6 && r.t<10; });
+  /* build type, from the spread itself */
+  var share=ranked[0].t/sum;
+  var kind = share>0.20 ? "Specialist — "+ranked[0].s.name
+           : share<0.11 ? "Generalist"
+           : "Balanced, leaning "+ranked[0].s.name;
+  out.push("\nBUILD: "+kind);
+  out.push("Points: "+spent()+" of "+budget()+" spent"+
+    (left()?", "+left()+" unspent":"")+".");
 
-  out.push("\nWHAT YOU ARE KNOWN FOR");
-  if(strong.length){
-    strong.forEach(function(r){
-      out.push(READ[r.s.key][0]+" — "+r.s.name+" "+r.t+", "+r.s.tiers[tierOf(r.t)].toLowerCase()+".");
-    });
-  } else {
-    out.push("Nothing about you yet rises far above the common run. In a realm that eats the "+
-      "remarkable first, that is not the worst place to begin.");
-  }
+  /* every attribute, in order, with the share of the total */
+  out.push("\nATTRIBUTES");
+  ranked.forEach(function(r){
+    var b=bonusFor(r.s.key);
+    out.push(pad(r.s.name,19)+(r.t<10?" ":"")+r.t+
+      "  "+pad(r.s.tiers[tierOf(r.t)],22)+
+      pad(pct(r.t/sum*100),5)+
+      (b ? (b>0?"+":"")+b+" granted" : ""));
+  });
 
-  if(mid.length){
-    out.push("\nWHAT YOU CAN DO AT NEED");
-    out.push("You are passable at "+mid.map(function(r){
-      return r.s.name.toLowerCase()+" ("+r.t+")"; }).join(", ")+
-      " — enough to be useful, not enough to be sent for.");
-  }
-
-  if(weak.length){
-    out.push("\nWHERE YOU ARE WANTING");
-    weak.forEach(function(r){ out.push(READ[r.s.key][1]+" — "+r.s.name+" "+r.t+"."); });
-  }
-
-  var granted=[];
-  if(isGreatHouse()) granted.push("The blood of a great house shows in what you were taught; "+
-    "maesters were paid for you that other children never saw");
-  if(isValyrian()) granted.push("Old Valyria left its mark on your face, as it always does, "+
-    "and people forgive you things because of it");
-  if(isBaratheonMan()) granted.push("You have the build of Storm's End — the shoulders, the reach, "+
-    "the way men step back without deciding to. It has been in the line since Durran");
-  if(cur.anomaly) granted.push("Whatever grew in you grew early. You are stronger than any child "+
-    "of your years has right to be, and grown men have started to notice");
-  if(granted.length) out.push("\nWHAT THE BLOOD GAVE\n"+granted.join(". ")+".");
+  /* where the bonuses came from */
+  var g=[];
+  if(isGreatHouse()) g.push("Great house: +5 Knowledge");
+  if(isValyrian()) g.push("Valyrian descent: +10 Beauty");
+  if(isBaratheonMan()) g.push("Baratheon blood: +6 Natural Athletics");
+  if(cur.anomaly) g.push("Anomaly: youth caps raised");
+  if(g.length) out.push("\nGRANTED\n"+g.join("\n"));
 
   var tl=traitList();
   if(tl.length){
-    out.push("\nWHAT SETS YOU APART");
+    out.push("\nTRAITS");
     tl.forEach(function(t){
-      out.push(t.name+" — "+TRAIT_LINE[t.id]+".");
+      out.push(t.name+": +"+TRAIT_PLUS+" "+attrName(t.plus)+", "+TRAIT_MINUS+" "+attrName(t.minus));
     });
+    var w=traitWaste();
+    if(w.length) out.push("Wasted at the ceiling: "+w.join("; "));
   }
 
+  /* knight */
   if(knightUnlocked()){
-    var rating=knightRating(), rank=rankFor(rating);
+    var rating=knightRating(), cap=knightCap();
+    out.push("\nKNIGHT: Overall "+rating+" — "+rankFor(rating));
+    out.push("Points: "+knightSpent()+" of "+knightBudget()+" spent"+
+      (knightLeft()?", "+knightLeft()+" unspent":"")+". Cap "+cap+" each.");
     var kr=KNIGHT.map(function(s){ return {s:s,t:knightTotal(s.key)}; })
       .sort(function(a,b){ return b.t-a.t; });
-    out.push("\nAT ARMS");
-    out.push("You have stood in enough lines to be reckoned "+
-      (/^[AEIOU]/i.test(rank)?"an ":"a ")+rank.toLowerCase()+", rated "+rating+" overall. "+
-      kr[0].s.name+" is the best of you at "+kr[0].t+", "+
-      kr[1].s.name.toLowerCase()+" close behind at "+kr[1].t+
-      "; it is "+kr[kr.length-1].s.name.toLowerCase()+" at "+kr[kr.length-1].t+
-      " that will get you killed one day.");
-    var arch=archMatches();
-    if(arch.length){
-      out.push("\nWHAT THE PAIRINGS MAKE");
-      arch.slice(0,3).forEach(function(x){ out.push(x.name+" — "+x.text); });
-    }
-    var cmd=commandList();
-    if(cmd.length){
-      out.push("\nIN COMMAND");
-      cmd.forEach(function(t){ out.push(t.name+" — "+t.text+"."); });
-    }
-    if(cur.prodigy && window.Cloud && Cloud.admin)
-      out.push("Marked a prodigy. The council knows what you are. You do not.");
-    if(age && age < VETERAN_AGE && rating >= VETERAN_AT)
-      out.push("You are young for this, and every grey-bearded knight in the yard has an opinion about it.");
+    var ksum=kr.reduce(function(a,r){ return a+r.t; },0)||1;
+    kr.forEach(function(r){
+      var b=knightBonusFor(r.s.key);
+      out.push(pad(r.s.name,19)+(r.t<10?" ":"")+r.t+
+        "  "+pad(r.s.tiers[knightTier(r.t)],22)+
+        pad(pct(r.t/ksum*100),5)+
+        (b?"+"+b+" from Athletics":""));
+    });
+    var am=archMatches();
+    out.push("Archetypes: "+(am.length ? am.map(function(x){ return x.name; }).join(", ") : "none yet"));
+    var cm=commandList();
+    if(cm.length) out.push("Battlefield: "+cm.map(function(t){ return t.name; }).join(", "));
+    if(knightNeedsApproval()) out.push("Awaiting admin approval.");
+    var warn=ratingWarning();
+    if(warn) out.push("Flag: "+warn);
   }
 
-  out.push("\nTHE MEASURE OF YOU");
-  if(topShare > 0.20)
-    out.push("This is a narrow blade. Nearly everything went into "+ranked[0].s.name.toLowerCase()+
-      ", and in that one thing you have few equals in the realm. Set you to any other task and "+
-      "the cracks show before the day is out. Men like you are indispensable in a war and "+
-      "awkward in a peace.");
-  else if(topShare < 0.11)
-    out.push("This is a broad hand rather than a sharp one. Competent nearly everywhere and master "+
-      "of nothing, you are the sort who is still standing at the end of a long reign while "+
-      "cleverer people have burned themselves out. Nobody writes songs about it. Nobody needs to.");
-  else
-    out.push("A balanced build with real teeth. You are strong where it counts and not so thin "+
-      "elsewhere that one bad turn undoes you — which is more than most of the great names "+
-      "of this age could say at your years.");
+  /* lineage, only if filled */
+  var lin=[];
+  if(cur.father) lin.push("Father: "+cur.father);
+  if(cur.mother) lin.push("Mother: "+cur.mother);
+  if(cur.spouse) lin.push("Spouse: "+cur.spouse);
+  if(cur.liege)  lin.push("Sworn to: "+cur.liege);
+  if(lin.length) out.push("\nLINEAGE\n"+lin.join("\n")+(cur.lineageLocked?"\n(locked)":""));
 
-  if(total("awareness")<=6 && total("intrigue")<=6)
-    out.push("A warning: you are blind and trusting at once. That is how houses end — not on a "+
-      "battlefield, but at a table, smiling.");
-  else if(total("martial")<=5 && total("athletics")<=5)
-    out.push("A warning: stay off open ground and out of tourneys. Your strength was never meant "+
-      "for the field, and pretending otherwise is a short story.");
-  else if(total("stewardship")<=5)
-    out.push("A warning: hand the ledgers to someone else before the winter stores are counted. "+
-      "Castles fall to bad accounting more often than to siege.");
-  else if(total("deception")>=15 && total("charisma")>=12)
-    out.push("A warning: you lie well and are liked besides. People will believe you long past "+
-      "the point they should, and one day one of them will work out why.");
-  else
-    out.push("There is room to grow here, and years enough to do it — if the realm permits, "+
-      "and it rarely does.");
-
+  if(cur.appearance) out.push("\nAPPEARANCE\n"+cur.appearance);
   return out.join("\n");
+}
+function attrName(k){
+  var s=STATS.filter(function(x){ return x.key===k; })[0];
+  return s?s.name:k;
 }
 function renderReading(){
   var t = readingText();
@@ -2184,8 +2068,7 @@ Cloud.push = function(c){
     base: c.base||BASE, awarded: c.awarded||0, scores: c.scores,
     knight: c.knight||{}, knight_awarded: c.knightAwarded||0,
     knight_overall: c.knightOverall||0, knight_cap: c.knightCap||KNIGHT_CAP,
-    traits: c.traits||[], command: c.command||[],
-    anomaly: !!c.anomaly,
+    traits: c.traits||[], command: c.command||[], anomaly: !!c.anomaly,
     appearance: c.appearance||"", valyrian: !!c.valyrian,
     lineage_locked: !!c.lineageLocked,
     needs_approval: !!c.approval
