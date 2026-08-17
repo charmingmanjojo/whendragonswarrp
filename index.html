@@ -198,6 +198,8 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
 .cnone{color:var(--ink-3)}
 .prodigy{font-size:12.5px;color:var(--flag);margin-top:6px;font-family:system-ui,sans-serif}
 #prodigyRow label{padding-top:8px}
+.spreads{margin:2px 0 18px}
+.spreads .bar{margin:5px 0 0}
 .traits{margin:2px 0 16px}
 .traithead{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
 .tcount{font-size:12px;color:var(--ink-3);font-family:system-ui,sans-serif}
@@ -215,6 +217,14 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
 .bonus.down{color:var(--alert)}
 .reading{white-space:pre-line;font-size:16px;line-height:1.65;max-width:64ch}
 .rlen{font-size:12px;color:var(--ink-3);align-self:center;font-family:system-ui,sans-serif}
+.archlist{display:grid;gap:10px;grid-template-columns:1fr}
+@media(min-width:640px){.archlist{grid-template-columns:1fr 1fr}}
+.arch{border:1px solid var(--rule);background:var(--panel);padding:11px 13px}
+.arch b{font-size:15px;font-family:Georgia,serif}
+.archpair{display:block;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-3);margin:3px 0 6px;font-family:system-ui,sans-serif}
+.arch p{font-size:13.5px;color:var(--ink-2);line-height:1.5}
+#commandPick{width:100%;margin-top:4px}
 @media (max-width:520px){
   .page{padding:16px 13px 50px}
   h1{font-size:21px}
@@ -333,6 +343,11 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
     <label><input type="checkbox" id="f_anomaly"> Anomaly — admin only. Lifts a young body's limits.</label>
   </div>
   <p class="bonusnote" id="bonusNote" style="display:none"></p>
+  <div class="spreads">
+    <label>A place to start</label>
+    <div class="bar" id="spreads"></div>
+    <p class="hint">Known roads, each spending all 115. Change anything you like afterwards.</p>
+  </div>
   <div class="traits">
     <div class="traithead">
       <label for="traitPick">Traits</label>
@@ -340,6 +355,7 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
     </div>
     <select id="traitPick"></select>
     <div class="traitlist" id="traitList"></div>
+    <p class="flagbox stop" id="traitWaste" style="display:none"></p>
   </div>
   <div class="comp">
     <div class="compbar" id="compBar"></div>
@@ -408,6 +424,23 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
       <div class="complist" id="kCompList"></div>
     </div>
     <div id="knightRoll" style="margin-top:14px"></div>
+
+    <h2 style="margin-top:24px">What the pairings make</h2>
+    <p class="hint">Two knight attributes at <b id="archBar">30</b> or better together earn a name.</p>
+    <div class="archlist" id="archList"></div>
+
+    <h2 style="margin-top:22px">Command</h2>
+    <p class="hint" id="commandLocked">Battlefield traits open when Camaraderie and Skill both
+      reach <b id="commandNeed">30</b> — the craft to know what should happen, and the command
+      to make thousands of men do it.</p>
+    <div id="commandBox" style="display:none">
+      <div class="traithead">
+        <label for="commandPick">Battlefield traits</label>
+        <span class="tcount" id="commandCount">0 of 2</span>
+      </div>
+      <select id="commandPick"></select>
+      <div class="traitlist" id="commandList"></div>
+    </div>
   </div>
 </section>
 
@@ -814,6 +847,68 @@ var READ = {
 };
 
 /* ============================================================
+   ARCHETYPES — what two strong attributes make together.
+   Camaraderie is the knight's leadership: command in the field.
+   ============================================================ */
+var ARCH_AT = 0.6;   // both attributes must reach this share of the cap
+var ARCHETYPES = [
+ {a:"strength",b:"skill",name:"The Power Fighter",
+  text:"Strength makes the force, Skill lands it. You hit hard and you hit where you meant to, "+
+       "which is a rarer pairing than the yard would have you believe."},
+ {a:"skill",b:"defense",name:"The Duelist",
+  text:"You make openings and refuse to give any. One to one you are close to unbeatable, "+
+       "and men who have watched you fight decline the invitation."},
+ {a:"defense",b:"resolve",name:"The Iron Wall",
+  text:"Hard to hit, and harder to break once hit. Worth more in a long battle than any "+
+       "explosive attacker — you are still standing when the field has thinned."},
+ {a:"strength",b:"resolve",name:"The Berserker",
+  text:"Power that does not stop for pain, exhaustion or fear. Once you commit there is little "+
+       "that turns you. Predictable, though, if your Skill and Defense stay thin."},
+ {a:"strength",b:"riding",name:"The Heavy Cavalier",
+  text:"Lance charges that break formations, cavalry ridden down, gaps opened and exploited. "+
+       "For mounted war there is no better pairing in the realm."},
+ {a:"riding",b:"skill",name:"The Mounted Duelist",
+  text:"Control of the horse and the craft to fight at speed. Plenty ride beautifully and can "+
+       "do nothing from the saddle; you are not one of them."},
+ {a:"resolve",b:"skill",name:"The Survivor",
+  text:"You fight well, and you keep fighting well after everything has gone wrong. Duels and "+
+       "long battles are where this shows."},
+ {a:"resolve",b:"camaraderie",name:"The Rallying Commander",
+  text:"You organise men, and you stay composed while the line is folding. Of all the things a "+
+       "commander can be, this is the one that saves armies."},
+ {a:"camaraderie",b:"skill",name:"The Tactical Commander",
+  text:"You know what ought to happen, and you can make thousands of men actually do it. "+
+       "Either half alone is a wasted commander."}
+];
+
+/* Battlefield traits, open once command and craft are both real. */
+var COMMAND_AT = 0.6;
+var COMMAND_TRAITS = [
+ {id:"defensive_genius",name:"Defensive Genius",
+  text:"you choose ground others would not have seen, and hold it far past reason"},
+ {id:"cavalry_master",name:"Cavalry Master",
+  text:"horse under your command arrives late, arrives fast, and arrives where it hurts most"},
+ {id:"siege_master",name:"Siege Master",
+  text:"walls are a question of time and patience to you, and you have both"},
+ {id:"naval_commander",name:"Naval Commander",
+  text:"you fight as well on water as on land, which few lords of the interior can claim"},
+ {id:"ambusher",name:"Ambusher",
+  text:"you would rather win before the enemy knows a battle has begun"},
+ {id:"logistics_master",name:"Logistics Master",
+  text:"your men eat. It is unglamorous and it wins wars"},
+ {id:"aggressive",name:"Aggressive",
+  text:"you press, always, and hand the enemy no hour in which to think"},
+ {id:"strategist",name:"Strategist",
+  text:"you fight the campaign rather than the battle, and lose the one to take the other"},
+ {id:"inspirational",name:"Inspirational",
+  text:"men hold longer than they should because you are watching"},
+ {id:"dragon_commander",name:"Dragon Commander",restricted:true,
+  text:"you command from the back of a dragon, and the field rearranges itself around that fact"}
+];
+var CMAP={}; COMMAND_TRAITS.forEach(function(t){ CMAP[t.id]=t; });
+var COMMAND_LIMIT = 2;
+
+/* ============================================================
    ATTRIBUTES
    ============================================================ */
 var BASE = 115, MAX = 20, PRE = "sheet13.";
@@ -934,7 +1029,8 @@ var Store = {
 function blank(){
   var c = { id:uid(), v:4, year:YEAR, awarded:0, base:BASE, approval:"", scores:{}, log:[],
             knight:{}, knightAwarded:0, knightOverall:36, knightCap:KNIGHT_CAP, prodigy:false,
-            portrait:"", appearance:"", traits:[], valyrian:false, anomaly:false, lineageLocked:false,
+            portrait:"", appearance:"", traits:[], command:[],
+            valyrian:false, anomaly:false, lineageLocked:false,
             created:new Date().toISOString() };
   FIELDS.forEach(function(f){ c[f]=""; });
   c.station = "Noble house";
@@ -1062,6 +1158,12 @@ function isGreatHouse(){
   var h = lookupHouse(cur.house);
   return !!(h && h.rank === "*" && TITLED[cur.station]);
 }
+function isMale(){ return /^(m|man|boy|male|lord|ser)/i.test((cur.gender||"").trim()); }
+/* The stag's blood runs strong in the men of Storm's End. */
+function isBaratheonMan(){
+  var h=lookupHouse(cur.house);
+  return !!(h && h.n==="Baratheon" && isMale());
+}
 function isValyrian(){
   if(cur.valyrian) return true;
   var h = lookupHouse(cur.house);
@@ -1088,6 +1190,7 @@ function bonusFor(key){
   var b = 0;
   if(key === "knowledge" && isGreatHouse()) b += 5;
   if(key === "beauty" && isValyrian()) b += 10;
+  if(key === "athletics" && isBaratheonMan()) b += 6;
   traitList().forEach(function(t){
     if(t.plus === key) b += TRAIT_PLUS;
     if(t.minus === key) b += TRAIT_MINUS;
@@ -1269,6 +1372,7 @@ $("f_anomaly").addEventListener("change",function(){
 $("f_prodigy").addEventListener("change",function(){
   if(!(window.Cloud && Cloud.admin)){ this.checked=!!cur.prodigy; return; }
   cur.prodigy=this.checked;
+  if(window.Cloud && Cloud.setProdigy) Cloud.setProdigy(cur.id, this.checked);
   record(this.checked?"Marked a prodigy by an admin":"Prodigy mark removed",0,"");
   renderKnight();
 });
@@ -1360,6 +1464,119 @@ function drawComposition(barId, listId, defs, valueOf){
     }).join("");
 }
 
+/* ---------------- a place to start ----------------
+   Each spread spends all 115. Caps still apply, so a child
+   taking the warrior's road will have it trimmed to fit. */
+var SPREADS = {
+ "Warrior lord":   [10,8,5,18,15,8,4,11,16,4,7,5,4],
+ "Master of whispers":[10,14,19,3,6,7,17,16,5,3,8,2,5],
+ "Maester":        [9,19,6,2,5,12,4,13,4,19,19,1,2],
+ "Lady of the court":[18,12,15,2,9,12,15,12,4,3,8,1,4],
+ "Lord commander": [10,10,6,14,19,10,4,12,12,4,8,3,3],
+ "Hunter":         [7,7,8,12,6,3,11,15,16,6,5,18,1]
+};
+(function(){
+  var box=$("spreads");
+  Object.keys(SPREADS).forEach(function(name){
+    var b=document.createElement("button"); b.type="button"; b.textContent=name;
+    b.onclick=function(){
+      if(spent()>0 && !confirm("Replace the current spread with "+name+"?")) return;
+      SPREADS[name].forEach(function(v,i){
+        var k=STATS[i].key;
+        cur.scores[k]=Math.min(v, capFor(k));
+      });
+      record("Took a known road — "+name, 0, "");
+      render();
+    };
+    box.appendChild(b);
+  });
+})();
+
+/* ---------------- archetypes and command ---------------- */
+function archThreshold(){ return knightCap() * ARCH_AT; }
+function archMatches(){
+  var bar=archThreshold();
+  return ARCHETYPES.filter(function(x){
+    return knightTotal(x.a) >= bar && knightTotal(x.b) >= bar;
+  });
+}
+function commandUnlocked(){
+  var bar=knightCap()*COMMAND_AT;
+  return knightTotal("camaraderie") >= bar && knightTotal("skill") >= bar;
+}
+function isTargaryenBlood(){
+  var h=lookupHouse(cur.house);
+  return !!((h && h.n==="Targaryen") || cur.valyrian);
+}
+function commandList(){
+  return (cur.command||[]).map(function(id){ return CMAP[id]; }).filter(Boolean);
+}
+function knightLabel(k){
+  var s=KNIGHT.filter(function(x){ return x.key===k; })[0];
+  return s ? s.name : k;
+}
+
+function renderArch(){
+  var box=$("archList"), list=archMatches(), bar=Math.round(archThreshold());
+  $("archBar").textContent = bar;
+  box.innerHTML = list.length
+    ? list.map(function(x){
+        return '<div class="arch"><b>'+esc(x.name)+'</b>'+
+          '<span class="archpair">'+esc(knightLabel(x.a))+' '+knightTotal(x.a)+
+          ' &middot; '+esc(knightLabel(x.b))+' '+knightTotal(x.b)+'</span>'+
+          '<p>'+esc(x.text)+'</p></div>';
+      }).join("")
+    : '<span class="cnone">No pairing has reached '+bar+' yet. '+
+      'Two strong attributes together make a name for you.</span>';
+
+  var open=commandUnlocked();
+  $("commandBox").style.display = open ? "" : "none";
+  $("commandLocked").style.display = open ? "none" : "";
+  $("commandNeed").textContent = Math.round(knightCap()*COMMAND_AT);
+  if(!open) return;
+
+  var taken=commandList();
+  $("commandCount").textContent = taken.length+" of "+COMMAND_LIMIT;
+  $("commandPick").disabled = taken.length>=COMMAND_LIMIT;
+  var cl=$("commandList");
+  cl.innerHTML = taken.length
+    ? taken.map(function(t){
+        return '<span class="trait"><b>'+esc(t.name)+'</b>'+
+          (t.restricted?'<span class="down">needs approval</span>':'')+
+          '<button data-cdrop="'+t.id+'" aria-label="Drop '+esc(t.name)+'">&times;</button></span>';
+      }).join("")
+    : '<span class="cnone">None taken.</span>';
+}
+(function(){
+  var sel=$("commandPick");
+  sel.innerHTML='<option value="">Choose a battlefield trait…</option>'+
+    COMMAND_TRAITS.map(function(t){
+      return '<option value="'+t.id+'">'+t.name+(t.restricted?" — dragonlords only":"")+'</option>';
+    }).join("");
+})();
+$("commandPick").addEventListener("change",function(){
+  var id=this.value; this.value=""; if(!id) return;
+  var t=CMAP[id];
+  cur.command=cur.command||[];
+  if(cur.command.indexOf(id)>-1) return;
+  if(t.restricted && !isTargaryenBlood()){
+    alert("Dragon Commander is for Targaryens and those of Targaryen descent. "+
+          "Set the house, or have an admin mark the descent."); return;
+  }
+  if(cur.command.length>=COMMAND_LIMIT){
+    alert(COMMAND_LIMIT+" battlefield traits is the limit. Remove one first."); return;
+  }
+  cur.command.push(id);
+  record("Battlefield trait taken — "+t.name, 0, t.restricted?"awaiting approval":"");
+  render();
+});
+$("commandList").addEventListener("click",function(e){
+  var id=e.target.getAttribute("data-cdrop"); if(!id) return;
+  cur.command=(cur.command||[]).filter(function(x){ return x!==id; });
+  record("Battlefield trait dropped — "+CMAP[id].name, 0, "");
+  render();
+});
+
 /* ---------------- traits ---------------- */
 (function(){
   var sel=$("traitPick");
@@ -1396,8 +1613,25 @@ $("traitList").addEventListener("click",function(e){
   record("Trait dropped — "+TMAP[id].name, 0, "");
   render();
 });
+function traitWaste(){
+  var lost=[];
+  traitList().forEach(function(t){
+    var raw=(cur.scores[t.plus]||0)+bonusFor(t.plus);
+    if(raw>MAX){
+      var s=STATS.filter(function(x){ return x.key===t.plus; })[0];
+      lost.push((s?s.name:t.plus)+" is over the ceiling by "+(raw-MAX));
+    }
+  });
+  return lost;
+}
 function renderTraits(){
   var list=traitList(), box=$("traitList");
+  var waste=traitWaste(), w=$("traitWaste");
+  w.style.display = waste.length ? "" : "none";
+  w.innerHTML = waste.length
+    ? "Wasted: "+waste.join(", ")+". Nothing passes "+MAX+
+      ", so the gift is being thrown away while the penalty still bites."
+    : "";
   $("traitPick").disabled = list.length>=TRAIT_LIMIT;
   $("traitCount").textContent = list.length+" of "+TRAIT_LIMIT;
   if(!list.length){ box.innerHTML='<span class="cnone">None taken.</span>'; return; }
@@ -1429,6 +1663,8 @@ function renderBonusNote(){
   var bits=[];
   if(isGreatHouse()) bits.push("Great house blood — <b>+5 Knowledge</b>");
   if(isValyrian()) bits.push("Valyrian descent — <b>+10 Beauty</b>");
+  if(isBaratheonMan()) bits.push("The stag's blood — <b>+6 Natural Athletics</b>, "+
+    "which carries on into Strength and Defense at arms");
   if(athleticsStep()) bits.push("Natural Athletics "+total("athletics")+
     " — <b>+"+athleticsStep()+" Strength and Defense</b> on the knight sheet");
   var el=$("bonusNote");
@@ -1541,6 +1777,7 @@ function renderKnight(){
       Math.ceil(pool/KNIGHT.length) + "."
     : "";
   cur.knightApproval = knightNeedsApproval() ? "Knight rating awaiting admin approval" : "";
+  renderArch();
 }
 
 /* ---------------- lineage lock ---------------- */
@@ -1594,6 +1831,10 @@ function sheetText(){
     out.push("");
     out.push("Knight points spent "+knightSpent()+" of "+knightBudget()+
       " · cap "+cap+" per attribute");
+    var am=archMatches();
+    if(am.length) out.push("Archetypes: "+am.map(function(x){ return x.name; }).join(", "));
+    var cm=commandList();
+    if(cm.length) out.push("Battlefield: "+cm.map(function(t){ return t.name; }).join(", "));
     if(knightNeedsApproval()) out.push("[Knight rating awaiting admin approval]");
   }
   if(cur.appearance) out=out.concat(["","Appearance: "+cur.appearance]);
@@ -1719,6 +1960,8 @@ function readingText(){
     "maesters were paid for you that other children never saw");
   if(isValyrian()) granted.push("Old Valyria left its mark on your face, as it always does, "+
     "and people forgive you things because of it");
+  if(isBaratheonMan()) granted.push("You have the build of Storm's End — the shoulders, the reach, "+
+    "the way men step back without deciding to. It has been in the line since Durran");
   if(cur.anomaly) granted.push("Whatever grew in you grew early. You are stronger than any child "+
     "of your years has right to be, and grown men have started to notice");
   if(granted.length) out.push("\nWHAT THE BLOOD GAVE\n"+granted.join(". ")+".");
@@ -1742,6 +1985,16 @@ function readingText(){
       kr[1].s.name.toLowerCase()+" close behind at "+kr[1].t+
       "; it is "+kr[kr.length-1].s.name.toLowerCase()+" at "+kr[kr.length-1].t+
       " that will get you killed one day.");
+    var arch=archMatches();
+    if(arch.length){
+      out.push("\nWHAT THE PAIRINGS MAKE");
+      arch.slice(0,3).forEach(function(x){ out.push(x.name+" — "+x.text); });
+    }
+    var cmd=commandList();
+    if(cmd.length){
+      out.push("\nIN COMMAND");
+      cmd.forEach(function(t){ out.push(t.name+" — "+t.text+"."); });
+    }
     if(cur.prodigy && window.Cloud && Cloud.admin)
       out.push("Marked a prodigy. The council knows what you are. You do not.");
     if(age && age < VETERAN_AGE && rating >= VETERAN_AT)
@@ -1917,8 +2170,12 @@ Cloud.start = function(){
 /* Send one character up. Called after every local save. */
 Cloud.push = function(c){
   if(!Cloud.ready) return;
+  /* The prodigy mark lives in a table only admins may read. It must not
+     travel inside the sheet blob, which everyone can select. */
+  var safe = JSON.parse(JSON.stringify(c));
+  delete safe.prodigy;
   var row = {
-    id: c.id, owner: Cloud.uid, sheet: c,
+    id: c.id, owner: Cloud.uid, sheet: safe,
     name: c.name||"", house: c.house||"", station: c.station||"", age: c.age||"",
     gender: c.gender||"", height: c.height||"", titles: c.titles||"", region: c.region||"",
     seat: c.seat||"", words: c.words||"", sigil: c.sigil||"", born: c.born||"",
@@ -1927,7 +2184,8 @@ Cloud.push = function(c){
     base: c.base||BASE, awarded: c.awarded||0, scores: c.scores,
     knight: c.knight||{}, knight_awarded: c.knightAwarded||0,
     knight_overall: c.knightOverall||0, knight_cap: c.knightCap||KNIGHT_CAP,
-    traits: c.traits||[], prodigy: !!c.prodigy, anomaly: !!c.anomaly,
+    traits: c.traits||[], command: c.command||[],
+    anomaly: !!c.anomaly,
     appearance: c.appearance||"", valyrian: !!c.valyrian,
     lineage_locked: !!c.lineageLocked,
     needs_approval: !!c.approval
@@ -1935,6 +2193,24 @@ Cloud.push = function(c){
   Cloud.sb.from("characters").upsert(row).then(function(r){
     if(r.error) console.error("save failed", r.error.message);
   });
+};
+
+/* The prodigy mark, written only by admins into a table only admins can read. */
+Cloud.setProdigy = function(charId, on){
+  if(!Cloud.ready || !Cloud.admin) return;
+  Cloud.sb.from("character_flags")
+    .upsert({ character_id: charId, prodigy: !!on, set_by: Cloud.uid })
+    .then(function(r){ if(r.error) console.error("flag failed", r.error.message); });
+};
+/* Admins pull the marks separately and fold them back in. */
+Cloud.pullFlags = function(ids, done){
+  if(!Cloud.ready || !Cloud.admin || !ids.length){ if(done) done({}); return; }
+  Cloud.sb.from("character_flags").select("character_id,prodigy").in("character_id", ids)
+    .then(function(r){
+      var map = {};
+      if(r.data) r.data.forEach(function(f){ map[f.character_id] = !!f.prodigy; });
+      if(done) done(map);
+    });
 };
 
 /* Append one immutable ledger line. */
@@ -1952,10 +2228,21 @@ Cloud.pull = function(){
   Cloud.sb.from("characters").select("id,sheet,claim_code,is_approved")
     .eq("owner", Cloud.uid).then(function(r){
       if(r.error || !r.data) return;
+      var ids = [];
       r.data.forEach(function(row){
         var c = row.sheet; if(!c) return;
         c.id = row.id; c.claim_code = row.claim_code; c.is_approved = row.is_approved;
+        c.prodigy = false;
         Store.write(PRE + "char." + c.id, c);
+        ids.push(c.id);
+      });
+      Cloud.pullFlags(ids, function(map){
+        ids.forEach(function(id){
+          if(!map[id]) return;
+          var c = Store.read(PRE + "char." + id);
+          if(c){ c.prodigy = true; Store.write(PRE + "char." + id, c); }
+        });
+        if(cur && map[cur.id]){ cur.prodigy = true; render(); }
       });
       if(r.data.length){
         var keep = Store.read(PRE + "char." + (Store.pref("current")||"")) || Store.all()[0];
@@ -1991,11 +2278,13 @@ $("registryBtn").onclick = function(){
   var box = $("registry");
   box.innerHTML = "<p class='none'>Loading…</p>";
   Cloud.sb.from("characters")
-    .select("id,name,house,station,age,player,is_approved,needs_approval,knight_overall,prodigy,anomaly,updated_at")
+    .select("id,name,house,station,age,player,is_approved,needs_approval,updated_at")
     .order("house", { ascending:true }).then(function(r){
       if(r.error){ box.innerHTML = "<p class='none'>" + esc(r.error.message) + "</p>"; return; }
       if(!r.data.length){ box.innerHTML = "<p class='none'>No characters yet.</p>"; return; }
+      Cloud.pullFlags(r.data.map(function(c){ return c.id; }), function(flags){
       box.innerHTML = "<table>" + r.data.map(function(c){
+        c.prodigy = !!flags[c.id];
         var flag = c.needs_approval && !c.is_approved
           ? '<b style="color:var(--alert)">needs approval</b>'
           : (c.is_approved ? "approved" : "");
@@ -2008,6 +2297,7 @@ $("registryBtn").onclick = function(){
           (c.is_approved ? "" : "<button data-approve='" + c.id + "'>Approve</button>") +
           "</td></tr>";
       }).join("") + "</table>";
+      });
     });
 };
 $("registry").addEventListener("click", function(e){
