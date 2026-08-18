@@ -272,6 +272,9 @@ html[data-theme="dark"] .facebox{filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)) br
 .dragonnum{font-size:44px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;
   font-family:system-ui,sans-serif;min-width:64px;text-align:center}
 .dragonband{font-size:18px}
+#promisedWrap{margin-top:22px}
+.foundcount{font-size:12px;color:var(--ink-3);margin-top:8px;
+  font-family:system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase}
 .promised{margin-top:14px;border:1px solid var(--flag);background:var(--box);padding:12px 14px;
   font-size:14px;color:var(--ink-2)}
 .promised b{font-size:16px;color:var(--flag);font-family:Georgia,serif;letter-spacing:.04em}
@@ -284,6 +287,29 @@ html[data-theme="dark"] .facebox{filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)) br
   .stat .num{font-size:21px}
   pre{font-size:11px}
 }
+.tabbar{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 10px;border-bottom:1px solid var(--rule)}
+.tabbtn{background:none;border:1px solid transparent;border-bottom:none;padding:8px 14px;
+  font-family:system-ui,sans-serif;font-size:14px;color:var(--ink-2);cursor:pointer;
+  border-radius:4px 4px 0 0;margin-bottom:-1px}
+.tabbtn.active{color:var(--ink);border-color:var(--rule);background:var(--panel);font-weight:600}
+.tabpanel{display:none}
+.tabpanel.active{display:block}
+.buildBadge{display:flex;gap:12px;align-items:center;padding:12px 14px;margin-bottom:14px;
+  background:var(--box);border:1px solid var(--rule)}
+.buildBadge img{width:40px;height:40px;flex:0 0 auto}
+.buildBadge .bbName{font-size:17px;font-weight:700;font-family:Georgia,serif}
+.buildBadge .bbDesc{font-size:13px;color:var(--ink-2);font-family:system-ui,sans-serif}
+.buildBadge.achieved{border-color:var(--flag)}
+.buildBadge.achieved .bbName{color:var(--flag)}
+.famCard{border:1px solid var(--rule-2);padding:8px 10px;margin:6px 0;font-size:13.5px;
+  font-family:system-ui,sans-serif}
+.famCard b{font-family:Georgia,serif}
+.ageTabRow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.ageTabBtn{font-family:system-ui,sans-serif;font-size:12.5px;padding:6px 10px}
+.ageTabBtn.cur{border-color:var(--flag)}
+.ageSnap{display:none;padding:10px 12px;background:var(--box);border:1px solid var(--rule);margin-bottom:10px}
+.ageSnap.show{display:block}
+.pendingBox{padding:10px 12px;margin-bottom:12px;border:1px solid var(--flag);background:var(--box)}
 @media print{
   body{background:#fff;color:#000}
   .ctrl,.bar,.award,#log,.notice,.roster,footer,#themeBtn{display:none}
@@ -309,6 +335,14 @@ html[data-theme="dark"] .facebox{filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)) br
 <p class="viewbar" id="viewBar" style="display:none"></p>
 <p class="denyflash" id="denyFlash" style="display:none"></p>
 
+<div class="tabbar" id="tabbar">
+  <button class="tabbtn" data-tab="tabSheet">Sheet</button>
+  <button class="tabbtn" data-tab="tabEquipment">Equipment</button>
+  <button class="tabbtn" data-tab="tabFamily">Family Tree</button>
+  <button class="tabbtn" data-tab="tabAges">Ages</button>
+</div>
+
+<div id="tabSheet" class="tabpanel">
 <div class="roster">
   <select id="rosterSel" aria-label="Choose character"></select>
   <button id="newBtn">New</button>
@@ -410,9 +444,10 @@ html[data-theme="dark"] .facebox{filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)) br
       <label><input type="checkbox" id="f_hasDragon"> This one has a dragon — admin only</label>
     </div>
     <button id="dragonGrant" style="display:none"></button>
-    <p class="promised" id="promised" style="display:none"></p>
   </div>
 </section>
+
+<div id="promisedWrap" style="display:none"></div>
 
 <section class="top">
   <div class="chart">
@@ -579,6 +614,14 @@ html[data-theme="dark"] .facebox{filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)) br
 
 <section>
   <h2>Build summary</h2>
+  <div class="buildBadge" id="buildBadge">
+    <img id="buildBadgeIcon" alt="">
+    <div><div class="bbName" id="buildBadgeName"></div><div class="bbDesc" id="buildBadgeDesc"></div></div>
+  </div>
+  <div class="wide" id="buildOverrideRow" style="display:none;margin-bottom:12px">
+    <label for="f_buildOverride">Admin build override — shown instead of the computed build</label>
+    <input id="f_buildOverride" data-f="buildOverride" autocomplete="off" placeholder="Leave blank to use the computed build">
+  </div>
   <p class="reading" id="reading"></p>
   <div class="bar" style="margin-top:12px">
     <button id="readingCopy">Copy build summary</button>
@@ -591,6 +634,60 @@ html[data-theme="dark"] .facebox{filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)) br
   <pre id="sheet"></pre>
 </section>
 
+</div><!-- /tabSheet -->
+
+<div id="tabEquipment" class="tabpanel">
+<section>
+  <h2>Equipment</h2>
+  <p class="hint">Kept apart from the main sheet so it doesn't clutter it. Weapons, armour, mounts,
+    and the odd valuable worth writing down.</p>
+  <div class="fields">
+    <div class="wide"><label for="f_equipWeapons">Weapons</label>
+      <input id="f_equipWeapons" data-f="equipWeapons" autocomplete="off" placeholder="Longsword, hunting bow…"></div>
+    <div class="wide"><label for="f_equipArmor">Armour</label>
+      <input id="f_equipArmor" data-f="equipArmor" autocomplete="off" placeholder="Boiled leather, a borrowed mail shirt…"></div>
+    <div class="wide"><label for="f_equipMounts">Mounts &amp; beasts</label>
+      <input id="f_equipMounts" data-f="equipMounts" autocomplete="off" placeholder="A courser named…"></div>
+    <div class="wide"><label for="f_equipValuables">Valuables &amp; heirlooms</label>
+      <input id="f_equipValuables" data-f="equipValuables" autocomplete="off" placeholder="A signet ring, a Valyrian steel dagger…"></div>
+  </div>
+  <label for="f_equipNotes" style="margin-top:10px">Notes</label>
+  <textarea id="f_equipNotes" data-f="equipNotes" rows="4"
+    placeholder="Anything else carried, worn, or stabled."></textarea>
+</section>
+</div><!-- /tabEquipment -->
+
+<div id="tabFamily" class="tabpanel">
+<section>
+  <h2>Family tree</h2>
+  <p class="hint" id="famHint">Every sheet in the same house, drawn out by parent, spouse and child.
+    Admins may look up any house; everyone else sees their own.</p>
+  <div class="bar" id="famAdminBar" style="display:none;margin-bottom:10px">
+    <select id="famHouseSel"></select>
+    <button id="famLoadBtn">Load house</button>
+  </div>
+  <div class="bar" id="famPlayerBar" style="margin-bottom:10px">
+    <button id="famLoadOwnBtn">Load my house's tree</button>
+  </div>
+  <div id="famTree"></div>
+</section>
+</div><!-- /tabFamily -->
+
+<div id="tabAges" class="tabpanel">
+<section>
+  <h2>Ages</h2>
+  <p class="hint">Rather than a new sheet each time an OC ages up, update this one. Age-ups must be
+    approved by an admin, and each approved step is kept here as its own tab.</p>
+  <div id="pendingAgeBox"></div>
+  <div class="ageTabRow" id="ageTabRow"></div>
+  <div id="ageSnaps"></div>
+  <div class="bar" id="ageRequestBar" style="margin-top:10px">
+    <input type="number" id="ageNewAge" placeholder="New age" style="max-width:100px">
+    <input type="text" id="ageReason" placeholder="What's changed since — a line or two" style="flex:1 1 220px">
+    <button id="ageRequestBtn">Request age-up</button>
+  </div>
+</section>
+</div><!-- /tabAges -->
 
 <section>
   <h2>The realm</h2>
@@ -1237,7 +1334,9 @@ var STATS = [
 ];
 var FIELDS = ["name","station","house","age","gender","height","weight","born","region","seat",
               "titles","words","sigil","player","father","mother","spouse","liege",
-              "backstory","history","dragonName"];
+              "backstory","history","dragonName",
+              "equipWeapons","equipArmor","equipMounts","equipValuables","equipNotes",
+              "buildOverride"];
 var LINEAGE = ["father","mother","spouse","liege"];
 /* Bodies that have not finished growing. A child of nine does not best a
    grown man at arms, however highborn — unless they are an anomaly, and
@@ -1417,11 +1516,13 @@ function drawRoster(){
     el.style.display = isAdmin() ? "" : "none"; });
 }
 function switchTo(c){ c._foreign=false; cur=c; Store.put(cur); Store.pref("current",cur.id);
-  fill(); drawLog(); render(); drawRoster(); }
+  fill(); drawLog(); render(); drawRoster();
+  if(typeof renderAges==="function" && $("tabAges").classList.contains("active")) renderAges(); }
 /* Someone else's sheet: held in memory only, never written to your store. */
 function openForeign(c){
   c._foreign=true; cur=c;
   fill(); drawLog(); render();
+  if(typeof renderAges==="function" && $("tabAges").classList.contains("active")) renderAges();
 }
 $("rosterSel").onchange = function(){
   var c=Store.read(PRE+"char."+this.value); if(c) switchTo(c); };
@@ -1769,6 +1870,7 @@ function render(){
   renderTraits(); renderHeritage(); renderYouthNote(); renderBonusNote();
   renderKnight(); renderDragon(); renderPromised(); renderLock(); renderMode();
   renderReading();
+  renderBuildBadge();
   $("sheet").textContent=sheetText();
 }
 
@@ -2267,19 +2369,125 @@ $("f_hasDragonTop").addEventListener("change",function(){
   render();
 });
 
-/* ---------------- the prophecy ---------------- */
-function promisedCheck(){
-  if(!dragonOpen()) return false;
-  var h=heightInches(cur.height), w=weightPounds(cur.weight);
-  if(h===null || h<PROMISED.minHeight || h>PROMISED.maxHeight) return false;
-  if(w===null || w<PROMISED.minWeight || w>PROMISED.maxWeight) return false;
-  for(var k in PROMISED.need) if(total(k) < PROMISED.need[k]) return false;
-  return true;
+/* ============================================================
+   HIDDEN TITLES
+   None of these are listed anywhere. They are found, not chosen.
+   Each is a shape a build can take, not a thing to buy.
+   ============================================================ */
+function K(k){ return knightTotal(k); }
+function C(k){ return total(k); }
+function anyInjury(){ return injuryList().length > 0; }
+
+var HIDDEN = [
+ { id:"promised", name:"The Prince That Was Promised",
+   test:function(){
+     if(!dragonOpen()) return false;
+     var h=heightInches(cur.height), w=weightPounds(cur.weight);
+     if(h===null||h<PROMISED.minHeight||h>PROMISED.maxHeight) return false;
+     if(w===null||w<PROMISED.minWeight||w>PROMISED.maxWeight) return false;
+     return C("beauty")>=26 && C("leadership")>=25 && C("awareness")>=20 && C("martial")>=16;
+   },
+   text:"Blood of the dragon, of a stature no singer would bother recording, beautiful in the "+
+        "Valyrian way, followed by men and quick to notice things. A dragon answers to this one. "+
+        "Every sign the songs ever named, in one person. So did three others, mind, and the "+
+        "prophecy has never once been read the same way twice." },
+
+ { id:"sword_saint", name:"The Sword Saint",
+   test:function(){
+     var cap=knightCap();
+     return knightUnlocked() && K("skill")>=cap && K("defense")>=cap && K("strength")>=30 &&
+            knightRating()>=99 && C("martial")>=MAX && C("archery")===0;
+   },
+   text:"Perfect offence and perfect defence in the same hand, and not one arrow ever loosed. "+
+        "Others reach for a bow when the distance is wrong. This one simply closes it. The title "+
+        "is not granted, not inherited, and not shared — it is what the realm calls whoever is "+
+        "currently the best blade alive." },
+
+ { id:"bat_harrenhal", name:"The Bat of Harrenhal",
+   test:function(){
+     return C("awareness")>=32 && C("stewardship")>=22 && C("intrigue")>=22 &&
+            C("deception")>=18 && C("martial")>=16 && C("archery")<=5;
+   },
+   text:"Fabulously rich, awake at hours no lord keeps, and trained past any reasonable need. "+
+        "Nobody has ever seen the face doing it. Nine bats on the banner and not one of them "+
+        "flies by daylight." },
+
+ { id:"the_board", name:"The Player Behind the Board",
+   test:function(){
+     return C("intelligence")>=MAX && C("intrigue")>=38 && C("deception")>=30 &&
+            C("martial")<=5 && C("athletics")<=10;
+   },
+   text:"Has never held a sword and has never needed one. Every death in the last five years "+
+        "was somebody else's hand, somebody else's reason, and somebody else's blame. The pieces "+
+        "move themselves once you have set the board properly." },
+
+ { id:"bored_fist", name:"The Bored Fist",
+   test:function(){
+     var others=["skill","riding","resolve","camaraderie"];
+     var low=others.every(function(k){ return K(k)<=5; });
+     return knightUnlocked() && K("strength")>=knightCap() && low &&
+            C("martial")>=28 && C("beauty")<=10;
+   },
+   text:"One blow. It has always been one blow. No guard worth the name, no horsemanship, no "+
+        "technique at all — and no opponent has ever required a second. The dreadful part is "+
+        "that it has stopped being interesting." },
+
+ { id:"physician", name:"The Wandering Physician",
+   test:function(){
+     return C("medicine")>=MAX && C("knowledge")>=28 && C("martial")<=10 && C("stewardship")<=10;
+   },
+   text:"Will open anyone, for anyone, and has never once named a price worth paying. No chain, "+
+        "no citadel, no lord's licence. Half the maesters call it butchery. The other half send "+
+        "for this one when their own methods fail." },
+
+ { id:"long_shot", name:"The Long Shot",
+   test:function(){
+     return C("archery")>=38 && C("awareness")>=32 && C("athletics")>=28 && C("martial")<=15;
+   },
+   text:"Cannot hold a line, cannot hold a sword, and does not need to. Whatever is worth hitting "+
+        "is already dead before the range closes. Every count of arrows loosed is also a count "+
+        "of men down." },
+
+ { id:"silver_crown", name:"The Silver Crown",
+   test:function(){
+     return C("charisma")>=38 && C("leadership")>=38 && C("knowledge")<=10 && C("intrigue")<=15;
+   },
+   text:"Cannot read a treaty, cannot follow a ledger, and could not scheme a way out of a sack. "+
+        "Men die for this one anyway, cheerfully, in numbers, having decided so themselves. "+
+        "It turns out that was always the only qualification." },
+
+ { id:"beast_slayer", name:"The Beast-Slayer",
+   test:function(){
+     return C("martial")>=28 && C("medicine")>=28 && C("knowledge")>=22 &&
+            C("awareness")>=26 && C("beauty")<=15 && anyInjury();
+   },
+   text:"Kills things for coin, then stitches itself back together in a barn. Knows the anatomy "+
+        "of everything it hunts and the price of everything it kills. Nobody wants it in the "+
+        "village. Everybody sends for it." },
+
+ { id:"unseen", name:"The Unseen",
+   test:function(){
+     return C("deception")>=38 && C("awareness")>=30 && C("athletics")>=22 &&
+            C("martial")>=15 && C("charisma")<=10;
+   },
+   text:"No face anyone can describe and no name anyone agrees on. Goes where it likes, over "+
+        "rooftops and through households, and leaves nothing behind but a body and a question. "+
+        "Deeply unremarkable in conversation, which is rather the point." }
+];
+
+function hiddenFound(){
+  return HIDDEN.filter(function(t){
+    try { return t.test(); } catch(e){ return false; }
+  });
 }
 function renderPromised(){
-  var on=promisedCheck(), el=$("promised");
-  el.style.display = on ? "" : "none";
-  if(on) el.innerHTML = "<b>"+esc(PROMISED.name)+"</b><p>"+esc(PROMISED.text)+"</p>";
+  var found=hiddenFound(), box=$("promisedWrap");
+  box.style.display = found.length ? "" : "none";
+  if(!found.length) return;
+  box.innerHTML = found.map(function(t){
+    return '<div class="promised"><b>'+esc(t.name)+'</b><p>'+esc(t.text)+'</p></div>';
+  }).join("") + '<p class="foundcount">'+found.length+
+    ' hidden title'+(found.length===1?'':'s')+' found.</p>';
 }
 
 /* ---------------- whose sheet is this ---------------- */
@@ -2304,6 +2512,7 @@ function renderMode(){
    "f_words","f_sigil","f_player","f_father","f_mother","f_spouse","f_liege","f_appearance",
    "heritagePick","bodyPick","injuryPick","traitPick","commandPick","kRating","kCap",
    "f_weight","f_backstory","f_history","f_dragonName",
+   "f_equipWeapons","f_equipArmor","f_equipMounts","f_equipValuables","f_equipNotes",
    "awardN","awardWhy","kAwardN","kAwardWhy","f_valyrian"].forEach(function(id){
      var el=$(id); if(!el) return;
      if(el.tagName==="SELECT" || el.type==="checkbox" || el.type==="file") el.disabled=dis;
@@ -2569,6 +2778,8 @@ function readingText(){
     out.push("\nDRAGON: "+(cur.dragonName||"unnamed")+
       " — Dragon Riding "+dragonScore()+", "+dragonBand(dragonScore()));
   }
+  var ht=hiddenFound();
+  if(ht.length) out.push("\nTITLES\n"+ht.map(function(t){ return t.name; }).join("\n"));
   if(cur.appearance) out.push("\nAPPEARANCE\n"+cur.appearance);
   if(cur.backstory) out.push("\nBACKSTORY\n"+cur.backstory);
   if(cur.history)   out.push("\nHISTORY\n"+cur.history);
@@ -2718,6 +2929,7 @@ Cloud.start = function(){
         $("adminBox").style.display = "";
         cloudStatus("Connected as an admin.","ok");
       }
+      if(typeof refreshAdminUI==="function") refreshAdminUI();
       Cloud.pull();
       Cloud.queue.forEach(function(fn){ fn(); }); Cloud.queue = [];
     }).catch(function(e){
@@ -2926,6 +3138,203 @@ $("registry").addEventListener("click", function(e){
     });
   }
 });
+
+/* ============================================================
+   TABS
+   ============================================================ */
+function switchTab(name){
+  document.querySelectorAll(".tabpanel").forEach(function(p){ p.classList.toggle("active",p.id===name); });
+  document.querySelectorAll(".tabbtn").forEach(function(b){ b.classList.toggle("active",b.getAttribute("data-tab")===name); });
+  Store.pref("tab",name);
+  if(name==="tabAges") renderAges();
+}
+$("tabbar").addEventListener("click",function(e){
+  var t=e.target.getAttribute("data-tab"); if(t) switchTab(t);
+});
+switchTab(Store.pref("tab")||"tabSheet");
+
+/* ============================================================
+   BUILD BADGE — the same spread math as the reading, shown as a
+   small card instead of buried in a wall of text. Admins may
+   override the name outright for any character.
+   ============================================================ */
+function computeBuildKind(){
+  var ranked=STATS.map(function(s){ return {s:s,t:total(s.key)}; })
+    .sort(function(a,b){ return b.t-a.t; });
+  var sum=ranked.reduce(function(a,r){ return a+r.t; },0);
+  if(!sum) return {name:"Unformed",desc:"No points spent yet.",icon:"",achieved:false,top:null};
+  var share=ranked[0].t/sum;
+  var achieved = share>0.20;
+  var name = achieved ? "Specialist — "+ranked[0].s.name
+           : share<0.11 ? "Generalist"
+           : "Balanced, leaning "+ranked[0].s.name;
+  var desc = achieved
+    ? esc(ranked[0].s.name)+" makes up "+pct(share*100)+" of everything they've put points into."
+    : share<0.11 ? "No single attribute dominates the spread."
+    : esc(ranked[0].s.name)+" leads, but not by enough to call it a specialty yet.";
+  return {name:name,desc:desc,icon:ICONS[ranked[0].s.key]||"",achieved:achieved,top:ranked[0].s.key};
+}
+function renderBuildBadge(){
+  var info=computeBuildKind();
+  var box=$("buildBadge"), useOverride = !!(cur.buildOverride && cur.buildOverride.trim());
+  box.classList.toggle("achieved", info.achieved || useOverride);
+  $("buildBadgeIcon").src = info.icon||LOGO;
+  $("buildBadgeName").textContent = useOverride ? cur.buildOverride : info.name;
+  $("buildBadgeDesc").textContent = useOverride
+    ? "Set by an admin."+(info.achieved?" ("+info.name+" by the numbers.)":"")
+    : info.desc;
+  var row=$("buildOverrideRow");
+  row.style.display = isAdmin() ? "" : "none";
+  $("f_buildOverride").disabled = !isAdmin();
+}
+
+/* ============================================================
+   FAMILY TREE — reuses the always-public roster (name/house/age)
+   plus lineage fields pulled straight out of each sheet's JSON.
+   Admins may look up any house; everyone else is locked to their
+   own character's house.
+   ============================================================ */
+(function(){
+  var sel=$("famHouseSel");
+  HOUSES.slice().sort(function(a,b){ return a.n<b.n?-1:1; }).forEach(function(h){
+    var o=document.createElement("option"); o.value=h.n; o.textContent=h.n; sel.appendChild(o);
+  });
+})();
+function famNorm(s){ return String(s||"").trim().toLowerCase(); }
+function renderFamilyTree(house, rows){
+  var target = famNorm(lookupHouse(house) ? lookupHouse(house).n : house);
+  var byKey={};
+  rows.forEach(function(r){ byKey[famNorm(r.name)] = r; });
+  var members = rows.filter(function(r){
+    var h = lookupHouse(r.house);
+    return famNorm(h ? h.n : r.house) === target;
+  });
+  if(!members.length){ $("famTree").innerHTML="<p class='none'>No sheets found for that house yet.</p>"; return; }
+  members.sort(function(a,b){ return (+b.age||0)-(+a.age||0); });
+  var html = members.map(function(m){
+    var kids = rows.filter(function(r){
+      return famNorm(r.father)===famNorm(m.name) || famNorm(r.mother)===famNorm(m.name);
+    }).map(function(k){ return esc(k.name)+(k.age?" ("+esc(k.age)+")":""); });
+    var bits=[];
+    if(m.father) bits.push("Father: "+esc(m.father));
+    if(m.mother) bits.push("Mother: "+esc(m.mother));
+    if(m.spouse) bits.push("Spouse: "+esc(m.spouse));
+    if(kids.length) bits.push("Children: "+kids.join(", "));
+    return "<div class='famCard'><b>"+esc(m.name||"Unnamed")+"</b>"+(m.age?" — age "+esc(m.age):"")+
+      (bits.length ? "<br>"+bits.join(" · ") : "<br><span style='color:var(--ink-3)'>No lineage recorded.</span>")+
+      "</div>";
+  }).join("");
+  $("famTree").innerHTML = html;
+}
+function loadFamily(house){
+  if(!house){ $("famTree").innerHTML="<p class='none'>No house to look up.</p>"; return; }
+  if(!(window.Cloud && Cloud.ready)){
+    $("famTree").innerHTML="<p class='none'>The family tree needs the server. Working offline.</p>"; return;
+  }
+  $("famTree").innerHTML="<p class='none'>Loading…</p>";
+  Cloud.sb.from("characters")
+    .select("id,name,house,age,father:sheet->>father,mother:sheet->>mother,spouse:sheet->>spouse")
+    .then(function(r){
+      if(r.error){ $("famTree").innerHTML="<p class='none'>"+esc(r.error.message)+"</p>"; return; }
+      renderFamilyTree(house, r.data||[]);
+    });
+}
+$("famLoadBtn").onclick=function(){ loadFamily($("famHouseSel").value); };
+$("famLoadOwnBtn").onclick=function(){ loadFamily(cur.house); };
+function refreshAdminUI(){
+  var admin=isAdmin();
+  $("famAdminBar").style.display = admin ? "" : "none";
+  $("famPlayerBar").style.display = admin ? "none" : "";
+  renderBuildBadge();
+}
+refreshAdminUI();
+
+/* ============================================================
+   AGES — age-up requests, admin approval, and a tab per approved
+   age so the same profile documents its own history instead of
+   spawning duplicate sheets.
+   ============================================================ */
+function ageSnapshot(){
+  return {
+    age: cur.age, height: cur.height, weight: cur.weight, titles: cur.titles,
+    appearance: cur.appearance, backstory: cur.backstory, history: cur.history,
+    scores: JSON.parse(JSON.stringify(cur.scores||{})), savedAt: new Date().toISOString()
+  };
+}
+function renderAges(){
+  if(!cur.ageHistory) cur.ageHistory=[];
+  var pend=$("pendingAgeBox");
+  if(cur.pendingAgeUp){
+    var p=cur.pendingAgeUp;
+    pend.innerHTML = "<div class='pendingBox'>Requested age-up to <b>"+esc(p.newAge)+
+      "</b> — "+esc(p.reason||"no reason given")+
+      "<div class='bar' style='margin-top:8px'>"+
+      (isAdmin() ? "<button id='ageApprove'>Approve</button><button id='ageReject'>Reject</button>"
+                 : "<span class='hint' style='margin:0'>Awaiting an admin.</span>")+
+      "</div></div>";
+    if(isAdmin()){
+      $("ageApprove").onclick=function(){
+        cur.age = cur.pendingAgeUp.newAge;
+        cur.pendingAgeUp=null; cur.approval="";
+        record("Age-up approved to "+cur.age,0,"");
+        Store.put(cur); fill(); render(); renderAges();
+      };
+      $("ageReject").onclick=function(){
+        record("Age-up to "+cur.pendingAgeUp.newAge+" rejected",0,"");
+        cur.pendingAgeUp=null; cur.approval="";
+        Store.put(cur); renderAges();
+      };
+    }
+  } else pend.innerHTML="";
+  $("ageRequestBar").style.display = (editable() && !cur.pendingAgeUp) ? "" : "none";
+
+  var tabs = cur.ageHistory.map(function(h,i){
+    return "<button class='ageTabBtn' data-age-i='"+i+"'>Age "+esc(h.age)+"</button>";
+  }).join("") + "<button class='ageTabBtn cur' data-age-i='cur'>Current — age "+esc(cur.age||"?")+"</button>";
+  $("ageTabRow").innerHTML = tabs;
+
+  var snaps = cur.ageHistory.map(function(h,i){
+    return "<div class='ageSnap' data-snap='"+i+"'>"+ageSnapHtml(h)+"</div>";
+  }).join("") + "<div class='ageSnap' data-snap='cur'>"+
+    ageSnapHtml({age:cur.age,height:cur.height,weight:cur.weight,titles:cur.titles,
+      appearance:cur.appearance,backstory:cur.backstory,history:cur.history,scores:cur.scores})+"</div>";
+  $("ageSnaps").innerHTML = snaps;
+  showAgeSnap(cur.ageHistory.length ? "cur" : "cur");
+}
+function ageSnapHtml(h){
+  var ranked=STATS.map(function(s){ return (h.scores&&h.scores[s.key])||0; });
+  var top=STATS.map(function(s,i){ return {n:s.name,v:ranked[i]}; })
+    .sort(function(a,b){ return b.v-a.v; }).slice(0,3)
+    .map(function(x){ return x.n+" "+x.v; }).join(", ");
+  return "<p><b>Age "+esc(h.age||"?")+"</b>"+(h.height?" · "+esc(h.height):"")+
+    (h.weight?" · "+esc(h.weight):"")+(h.titles?" · "+esc(h.titles):"")+"</p>"+
+    (top?"<p class='hint'>Top attributes then: "+esc(top)+"</p>":"")+
+    (h.backstory?"<p class='hint'>"+esc(h.backstory).slice(0,300)+
+      (h.backstory.length>300?"…":"")+"</p>":"");
+}
+function showAgeSnap(which){
+  document.querySelectorAll(".ageTabBtn").forEach(function(b){
+    b.classList.toggle("active", String(b.getAttribute("data-age-i"))===String(which));
+  });
+  document.querySelectorAll(".ageSnap").forEach(function(s){
+    s.classList.toggle("show", String(s.getAttribute("data-snap"))===String(which));
+  });
+}
+$("ageTabRow").addEventListener("click",function(e){
+  var i=e.target.getAttribute("data-age-i"); if(i!==null) showAgeSnap(i);
+});
+$("ageRequestBtn").onclick=function(){
+  if(denied()) return;
+  var na=+$("ageNewAge").value, reason=$("ageReason").value.trim();
+  if(!na || na<=(+cur.age||0)){ alert("Enter an age older than the current one."); return; }
+  if(!cur.ageHistory) cur.ageHistory=[];
+  cur.ageHistory.push(ageSnapshot());
+  cur.pendingAgeUp = {newAge:na, reason:reason, requestedAt:new Date().toISOString()};
+  cur.approval = "Age-up to "+na+" awaiting admin approval";
+  record("Requested age-up to "+na,0,reason);
+  Store.put(cur); $("ageNewAge").value=""; $("ageReason").value="";
+  renderAges();
+};
 
 Cloud.start();
 
