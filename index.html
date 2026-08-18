@@ -216,7 +216,7 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
 .trait button:hover{color:var(--alert);background:none}
 .bonus.down{color:var(--alert)}
 .na{font-size:15px;color:var(--ink-3);letter-spacing:.06em}
-#heritagePick,#injuryPick{width:100%}
+#heritagePick,#injuryPick,#bodyPick{width:100%}
 .reading{white-space:pre;overflow-x:auto;font-size:12.5px;line-height:1.62;
   font-family:ui-monospace,Consolas,"Courier New",monospace;
   background:var(--panel);border:1px solid var(--rule);padding:13px}
@@ -348,6 +348,11 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
   </div>
   <p class="bonusnote" id="bonusNote" style="display:none"></p>
   <div class="fields" style="margin-bottom:14px">
+    <div class="wide">
+      <label for="bodyPick">Build</label>
+      <select id="bodyPick"></select>
+      <p class="hint" id="bodyNote" style="display:none"></p>
+    </div>
     <div class="wide">
       <label for="heritagePick">Heritage</label>
       <select id="heritagePick"></select>
@@ -931,6 +936,49 @@ function pointsForAge(a){
 }
 
 /* ============================================================
+   BODY TYPES — the frame a character carries. Unisex: any of
+   these fits any character, of either sex.
+   Modifiers land on Strength, Defense, Skill and Riding.
+   ============================================================ */
+var BODY_TYPES = [
+ {id:"lean",     name:"Lean",
+  knight:{strength:0, defense:1, skill:2, riding:2},
+  note:"Light, agile build. Excels at speed, movement, and mobility."},
+ {id:"athletic", name:"Athletic",
+  knight:{strength:1, defense:1, skill:2, riding:1},
+  note:"Balanced physical build with no major weaknesses."},
+ {id:"muscular", name:"Muscular",
+  knight:{strength:3, defense:2, skill:0, riding:-1},
+  note:"Powerful build. Excels in strength, grappling, and physical exchanges."},
+ {id:"heavy",    name:"Heavy",
+  knight:{strength:4, defense:3, skill:-2, riding:-2},
+  note:"Large, powerful frame. Extremely difficult to overpower but less mobile."},
+ {id:"compact",  name:"Compact",
+  knight:{strength:2, defense:2, skill:1, riding:1},
+  note:"Dense, sturdy build with excellent balance and physical resilience."},
+ {id:"lithe",    name:"Lithe",
+  knight:{strength:-1, defense:0, skill:3, riding:3},
+  note:"Extremely agile and lightweight. Excels at speed and mounted mobility."},
+ {id:"frail",    name:"Frailer",
+  knight:{strength:-2, defense:-2, skill:0, riding:0},
+  note:"Slight of frame. Little power behind a blow and little to absorb one."}
+];
+var BMAP = {}; BODY_TYPES.forEach(function(b){ BMAP[b.id]=b; });
+
+/* Knight bands, as published: ten steps of five across the fifty. */
+var KNIGHT_BANDS = [
+ [1,5,"Very Poor"],[6,10,"Poor"],[11,15,"Below Average"],[16,20,"Average"],
+ [21,25,"Above Average"],[26,30,"Skilled"],[31,35,"Exceptional"],[36,40,"Master"],
+ [41,45,"Legendary"],[46,999,"Monstrous"]
+];
+function knightBand(v){
+  if(v <= 0) return "Untrained";
+  for(var i=0;i<KNIGHT_BANDS.length;i++)
+    if(v >= KNIGHT_BANDS[i][0] && v <= KNIGHT_BANDS[i][1]) return KNIGHT_BANDS[i][2];
+  return "Monstrous";
+}
+
+/* ============================================================
    ATTRIBUTES
    ============================================================ */
 var BASE = 115, MAX = 40, PRE = "sheet13.";
@@ -1052,7 +1100,7 @@ function blank(){
   var c = { id:uid(), v:4, year:YEAR, awarded:0, base:BASE, approval:"", scores:{}, log:[],
             knight:{}, knightAwarded:0, knightOverall:36, knightCap:KNIGHT_CAP, prodigy:false,
             portrait:"", appearance:"", traits:[], command:[],
-            heritage:"", injuries:[],
+            heritage:"", body:"", injuries:[],
             valyrian:false, anomaly:false, lineageLocked:false,
             created:new Date().toISOString() };
   FIELDS.forEach(function(f){ c[f]=""; });
@@ -1187,10 +1235,25 @@ function isBaratheonMan(){
   var h=lookupHouse(cur.house);
   return !!(h && h.n==="Baratheon" && isMale());
 }
+function heritage(){ return HMAP_H[cur.heritage] || null; }
+function bodyType(){ return BMAP[cur.body] || null; }
 function isValyrian(){
-  if(cur.valyrian) return true;
+  if(cur.valyrian || cur.heritage === "valyrian") return true;
   var h = lookupHouse(cur.house);
   return !!(h && VALYRIAN_HOUSES[h.n]);
+}
+function injuryList(){
+  return (cur.injuries||[]).map(function(id){ return IMAP[id]; }).filter(Boolean);
+}
+function declineBand(){
+  var a=ageNum(); if(a===null) return null;
+  for(var i=0;i<DECLINE.length;i++)
+    if(a>=DECLINE[i].from && a<=DECLINE[i].to) return DECLINE[i];
+  return null;
+}
+function isRetired(key){
+  var d=declineBand();
+  return !!(d && d.retired && d.retired.indexOf(key)>-1);
 }
 function youthBand(){
   var a = ageNum();
@@ -1232,6 +1295,8 @@ function knightBonusFor(key){
   if(key === "strength" || key === "defense") b += athleticsStep();
   var h=heritage();
   if(h && h.knight[key]) b += h.knight[key];
+  var bt=bodyType();
+  if(bt && bt.knight[key]) b += bt.knight[key];
   injuryList().forEach(function(i){ if(i.knight && i.knight[key]) b += i.knight[key]; });
   return b;
 }
@@ -1511,6 +1576,12 @@ function northernHouse(){
   return !!(h && h.r==="The North");
 }
 (function(){
+  var bsel=$("bodyPick");
+  bsel.innerHTML='<option value="">Not set</option>'+BODY_TYPES.map(function(b){
+    var bits=[];
+    for(var k in b.knight) if(b.knight[k]) bits.push((b.knight[k]>0?"+":"")+b.knight[k]+" "+knightLabel(k));
+    return '<option value="'+b.id+'">'+b.name+(bits.length?" — "+bits.join(", "):"")+'</option>';
+  }).join("");
   var sel=$("heritagePick");
   sel.innerHTML='<option value="">Not set</option>'+HERITAGES.map(function(h){
     return '<option value="'+h.id+'">'+h.name+(h.north?" — the North only":"")+'</option>';
@@ -1523,6 +1594,12 @@ function northernHouse(){
     return '<option value="'+i.id+'">'+i.name+' — '+bits.join(", ")+'</option>';
   }).join("");
 })();
+$("bodyPick").addEventListener("change",function(){
+  var from=cur.body?BMAP[cur.body].name:"none";
+  cur.body=this.value;
+  record("Build "+from+" \u2192 "+(cur.body?BMAP[cur.body].name:"none"), 0, "");
+  render();
+});
 $("heritagePick").addEventListener("change",function(){
   var id=this.value, h=HMAP_H[id];
   if(h && h.north && !northernHouse()){
@@ -1549,6 +1626,10 @@ $("injuryList").addEventListener("click",function(e){
   render();
 });
 function renderHeritage(){
+  $("bodyPick").value=cur.body||"";
+  var bt=bodyType();
+  $("bodyNote").textContent = bt ? bt.note : "";
+  $("bodyNote").style.display = bt ? "" : "none";
   $("heritagePick").value=cur.heritage||"";
   var h=heritage();
   $("heritageNote").textContent = h ? h.note : "";
@@ -1853,8 +1934,8 @@ function renderKnight(){
     var b=knightBonusFor(s.key), t=Math.min(cap, v+b);
     $("knum-"+s.key).innerHTML = t + (b ? '<span class="bonus">+'+b+'</span>' : "");
     $("knum-"+s.key).className="num"+(t===0?" zero":"");
-    $("krank-"+s.key).textContent = s.tiers[knightTier(t)] +
-      (b ? "  ·  "+v+" bought, +"+b+" from Athletics" : "");
+    $("krank-"+s.key).textContent = knightBand(t) +
+      (b ? "  ·  "+v+" bought, "+(b>0?"+":"")+b+" granted" : "");
     var r=$("krange-"+s.key); r.max=cap; r.value=v;
     $("kfill-"+s.key).style.width = Math.min(100, t/cap*100) + "%";
     $("kcapz-"+s.key).style.width = Math.max(0, 100 - ceil/cap*100) + "%";
@@ -1940,7 +2021,7 @@ function sheetText(){
       var f=Math.max(0,Math.min(10,Math.round(t/cap*10)));
       return pad(s.name,19)+(t<10?" ":"")+t+"  "+
         Array(f+1).join("#")+Array(11-f).join(".")+"  "+
-        s.tiers[knightTier(t)]+(b?" (+"+b+" from Athletics)":"");
+        knightBand(t)+(b?" ("+(b>0?"+":"")+b+" granted)":"");
     }));
     out.push("");
     out.push("Knight points spent "+knightSpent()+" of "+knightBudget()+
@@ -2053,6 +2134,13 @@ function readingText(){
     for(var k in hh.core) hb.push((hh.core[k]>0?"+":"")+hh.core[k]+" "+attrName(k));
     for(var k2 in hh.knight) hb.push((hh.knight[k2]>0?"+":"")+hh.knight[k2]+" "+knightLabel(k2));
     g.push("Heritage — "+hh.name+(hb.length?": "+hb.join(", "):""));
+  }
+  var bt2=bodyType();
+  if(bt2){
+    var bb=[];
+    for(var k4 in bt2.knight) if(bt2.knight[k4])
+      bb.push((bt2.knight[k4]>0?"+":"")+bt2.knight[k4]+" "+knightLabel(k4));
+    g.push("Build — "+bt2.name+(bb.length?": "+bb.join(", "):""));
   }
   if(isGreatHouse()) g.push("Great house: +5 Knowledge");
   if(isValyrian()) g.push("Valyrian descent: +10 Beauty");
