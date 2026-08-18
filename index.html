@@ -229,6 +229,20 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
   color:var(--ink-3);margin:3px 0 6px;font-family:system-ui,sans-serif}
 .arch p{font-size:13.5px;color:var(--ink-2);line-height:1.5}
 #commandPick{width:100%;margin-top:4px}
+.viewbar{font-size:13.5px;border-left:3px solid var(--flag);background:var(--box);
+  padding:10px 12px;margin-top:14px;color:var(--ink-2);font-family:system-ui,sans-serif}
+.viewbar.admin{border-left-color:var(--alert)}
+.denyflash{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:80;
+  background:var(--alert);color:#fff;padding:10px 18px;font-size:13.5px;
+  font-family:system-ui,sans-serif}
+.viewonly .stat,.viewonly .fields,.viewonly .traits,.viewonly .spreads{opacity:.92}
+.viewonly .spreads,.viewonly .award{display:none}
+#browseList{border:1px solid var(--rule);background:var(--panel);max-height:420px;overflow:auto}
+#browseList table{width:100%;border-collapse:collapse;font-size:13.5px;font-family:system-ui,sans-serif}
+#browseList td{padding:8px 9px;border-bottom:1px solid var(--rule-2);vertical-align:top}
+#browseList td:last-child{text-align:right;white-space:nowrap;width:1%}
+#browseList button{padding:5px 11px;min-height:32px}
+#browseList .none{padding:14px 9px;color:var(--ink-3);font-family:system-ui,sans-serif}
 @media (max-width:520px){
   .page{padding:16px 13px 50px}
   h1{font-size:21px}
@@ -256,11 +270,15 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
   <button id="themeBtn" aria-pressed="false">Dark mode</button>
 </header>
 
+<p class="viewbar" id="viewBar" style="display:none"></p>
+<p class="denyflash" id="denyFlash" style="display:none"></p>
+
 <div class="roster">
   <select id="rosterSel" aria-label="Choose character"></select>
   <button id="newBtn">New</button>
   <button id="dupBtn">Duplicate</button>
   <button id="delBtn">Delete</button>
+  <button id="backBtn" style="display:none">Back to mine</button>
 </div>
 
 <section>
@@ -495,6 +513,18 @@ html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
   <pre id="sheet"></pre>
 </section>
 
+
+<section>
+  <h2>The realm</h2>
+  <p class="hint">Every character in the game. Open any sheet to read it — only the player who
+    made it, or an admin, may change anything.</p>
+  <div class="bar" style="margin-top:10px">
+    <button id="browseBtn">Load the registry</button>
+    <input type="text" id="browseSearch" placeholder="Search name, house or player" style="flex:1 1 200px">
+    <span class="rlen" id="browseCount"></span>
+  </div>
+  <div id="browseList"></div>
+</section>
 
 <section id="serverSection" style="display:none">
   <h2>Server</h2>
@@ -1063,6 +1093,23 @@ var YOUTH_CAPS = [
 var VALYRIAN_HOUSES = { "Targaryen":1, "Velaryon":1, "Celtigar":1 };
 
 function $(id){ return document.getElementById(id); }
+/* A sheet is yours to change if you made it, or if you are an admin.
+   Server-side row level security enforces the same rule, so editing
+   the page in a console gains nobody anything. */
+function isAdmin(){ return !!(window.Cloud && Cloud.admin); }
+function editable(){ return !cur._foreign || isAdmin(); }
+function denied(){
+  if(editable()) return false;
+  flash("That sheet belongs to another player.");
+  return true;
+}
+var flashTimer;
+function flash(msg){
+  var el=$("denyFlash"); if(!el) return;
+  el.textContent=msg; el.style.display="";
+  clearTimeout(flashTimer);
+  flashTimer=setTimeout(function(){ el.style.display="none"; },2200);
+}
 function esc(s){ return String(s).replace(/[<>&]/g,function(c){
   return c==="<"?"&lt;":c===">"?"&gt;":"&amp;"; }); }
 function uid(){
@@ -1205,10 +1252,16 @@ function drawRoster(){
   sel.innerHTML = list.map(function(c){
     return '<option value="'+c.id+'"'+(c.id===cur.id?" selected":"")+">"+esc(label(c))+"</option>";
   }).join("");
+  $("delBtn").style.display = isAdmin() ? "" : "none";
   $("delBtn").disabled = list.length < 2;
 }
-function switchTo(c){ cur=c; Store.put(cur); Store.pref("current",cur.id);
+function switchTo(c){ c._foreign=false; cur=c; Store.put(cur); Store.pref("current",cur.id);
   fill(); drawLog(); render(); drawRoster(); }
+/* Someone else's sheet: held in memory only, never written to your store. */
+function openForeign(c){
+  c._foreign=true; cur=c;
+  fill(); drawLog(); render();
+}
 $("rosterSel").onchange = function(){
   var c=Store.read(PRE+"char."+this.value); if(c) switchTo(c); };
 $("newBtn").onclick = function(){ switchTo(blank()); $("f_name").focus(); };
@@ -1216,6 +1269,7 @@ $("dupBtn").onclick = function(){
   var c=JSON.parse(JSON.stringify(cur)); c.id=uid();
   c.name=(c.name||"Unnamed")+" (copy)"; c.created=new Date().toISOString(); switchTo(c); };
 $("delBtn").onclick = function(){
+  if(!isAdmin()){ flash("Only an admin may delete a character."); return; }
   if(!confirm("Delete "+label(cur)+" for good?")) return;
   Store.del(cur.id); switchTo(Store.all()[0]||blank()); };
 
@@ -1351,6 +1405,7 @@ function tierOf(v){ return v<=0 ? 0 : Math.max(1, Math.min(7, Math.ceil(v / MAX 
 function stamp(){ var d=new Date(), p=function(n){ return (n<10?"0":"")+n; };
   return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes()); }
 function record(what,delta,note){
+  if(!editable()) return;
   var entry={t:stamp(),what:what,d:delta,note:note||""};
   cur.log.unshift(entry);
   if(cur.log.length>400) cur.log.length=400;
@@ -1399,6 +1454,7 @@ STATS.forEach(function(s,i){ var p=at(i,R+15);
   t.textContent=s.abbr; svg.appendChild(t); });
 
 function setVal(key,want,log){
+  if(denied()){ render(); return; }
   var from=cur.scores[key], ceil=Math.min(MAX,capFor(key),from+left());
   var to=Math.max(0,Math.min(ceil,want));
   if(to===from){ render(); return; }
@@ -1409,6 +1465,7 @@ function setVal(key,want,log){
   render();
 }
 function setKnight(key,want,log){
+  if(denied()){ renderKnight(); return; }
   var from=cur.knight[key]||0, ceil=Math.min(knightCap(),from+knightLeft());
   var to=Math.max(0,Math.min(ceil,want));
   if(to===from){ renderKnight(); return; }
@@ -1440,6 +1497,7 @@ FIELDS.forEach(function(f){
   var el=$("f_"+f); if(!el) return;
   var ev = el.tagName==="SELECT" ? "change" : "input";
   el.addEventListener(ev,function(){
+    if(denied()){ fill(); return; }
     cur[f]=el.value; Store.put(cur);
     if(f==="house"||f==="station") applyHouse(false);
     if(f==="age") STATS.forEach(function(s){
@@ -1453,14 +1511,17 @@ $("f_house").addEventListener("change",function(){ applyHouse(true); Store.put(c
   fill(); describe(); $("sheet").textContent=sheetText(); });
 
 $("f_appearance").addEventListener("input",function(){
+  if(denied()){ fill(); return; }
   cur.appearance=this.value; Store.put(cur); $("sheet").textContent=sheetText();
 });
 $("f_valyrian").addEventListener("change",function(){
+  if(denied()){ fill(); return; }
   cur.valyrian=this.checked;
   record(this.checked?"Marked as Valyrian descent":"Valyrian descent removed",0,"");
   render();
 });
 $("f_anomaly").addEventListener("change",function(){
+  if(denied()){ fill(); return; }
   if(!(window.Cloud && Cloud.admin)){ this.checked=!!cur.anomaly; return; }
   cur.anomaly=this.checked;
   record(this.checked?"Marked an anomaly by an admin":"Anomaly mark removed",0,"");
@@ -1471,6 +1532,7 @@ $("f_anomaly").addEventListener("change",function(){
   render();
 });
 $("f_prodigy").addEventListener("change",function(){
+  if(denied()){ fill(); return; }
   if(!(window.Cloud && Cloud.admin)){ this.checked=!!cur.prodigy; return; }
   cur.prodigy=this.checked;
   if(window.Cloud && Cloud.setProdigy) Cloud.setProdigy(cur.id, this.checked);
@@ -1493,6 +1555,7 @@ $("kCap").addEventListener("change",function(){
 });
 
 $("kAwardBtn").onclick=function(){
+  if(denied()) return;
   var n=parseInt($("kAwardN").value,10); if(!n) return;
   cur.knightAwarded=(cur.knightAwarded||0)+n;
   record("Knight points awarded",n,$("kAwardWhy").value.trim());
@@ -1500,6 +1563,7 @@ $("kAwardBtn").onclick=function(){
 };
 
 $("awardBtn").onclick=function(){
+  if(denied()) return;
   var n=parseInt($("awardN").value,10); if(!n) return;
   cur.awarded=(cur.awarded||0)+n;
   record("Points awarded",n,$("awardWhy").value.trim());
@@ -1542,7 +1606,7 @@ function render(){
   $("page").className="page"+(over?" over":"");
   drawComposition("compBar","compList",STATS,function(k){ return total(k); });
   renderTraits(); renderHeritage(); renderYouthNote(); renderBonusNote();
-  renderKnight(); renderLock();
+  renderKnight(); renderLock(); renderMode();
   renderReading();
   $("sheet").textContent=sheetText();
 }
@@ -1595,12 +1659,14 @@ function northernHouse(){
   }).join("");
 })();
 $("bodyPick").addEventListener("change",function(){
+  if(denied()){ fill(); return; }
   var from=cur.body?BMAP[cur.body].name:"none";
   cur.body=this.value;
   record("Build "+from+" \u2192 "+(cur.body?BMAP[cur.body].name:"none"), 0, "");
   render();
 });
 $("heritagePick").addEventListener("change",function(){
+  if(denied()){ fill(); return; }
   var id=this.value, h=HMAP_H[id];
   if(h && h.north && !northernHouse()){
     alert("Giant-blooded is for the North alone. Set a northern house first.");
@@ -1612,6 +1678,7 @@ $("heritagePick").addEventListener("change",function(){
   render();
 });
 $("injuryPick").addEventListener("change",function(){
+  if(denied()){ fill(); return; }
   var id=this.value; this.value=""; if(!id) return;
   cur.injuries=cur.injuries||[];
   if(cur.injuries.indexOf(id)>-1) return;
@@ -1620,6 +1687,7 @@ $("injuryPick").addEventListener("change",function(){
   render();
 });
 $("injuryList").addEventListener("click",function(e){
+  if(!editable()) return;
   var id=e.target.getAttribute("data-idrop"); if(!id) return;
   cur.injuries=(cur.injuries||[]).filter(function(x){ return x!==id; });
   record("Affliction healed — "+IMAP[id].name, 0, "");
@@ -1675,6 +1743,7 @@ var SPREADS = {
   Object.keys(SPREADS).forEach(function(name){
     var b=document.createElement("button"); b.type="button"; b.textContent=name;
     b.onclick=function(){
+      if(denied()) return;
       if(spent()>0 && !confirm("Replace the current spread with "+name+"?")) return;
       var allow=budget(), scale=Math.min(1, allow/115);
       STATS.forEach(function(s,i){
@@ -1751,6 +1820,7 @@ function renderArch(){
     }).join("");
 })();
 $("commandPick").addEventListener("change",function(){
+  if(denied()){ fill(); return; }
   var id=this.value; this.value=""; if(!id) return;
   var t=CMAP[id];
   cur.command=cur.command||[];
@@ -1767,6 +1837,7 @@ $("commandPick").addEventListener("change",function(){
   render();
 });
 $("commandList").addEventListener("click",function(e){
+  if(!editable()) return;
   var id=e.target.getAttribute("data-cdrop"); if(!id) return;
   cur.command=(cur.command||[]).filter(function(x){ return x!==id; });
   record("Battlefield trait dropped — "+CMAP[id].name, 0, "");
@@ -1792,6 +1863,7 @@ $("commandList").addEventListener("click",function(e){
   sel.innerHTML=html;
 })();
 $("traitPick").addEventListener("change",function(){
+  if(denied()){ fill(); return; }
   var id=this.value; this.value="";
   if(!id) return;
   cur.traits=cur.traits||[];
@@ -1804,6 +1876,7 @@ $("traitPick").addEventListener("change",function(){
   render();
 });
 $("traitList").addEventListener("click",function(e){
+  if(!editable()) return;
   var id=e.target.getAttribute("data-drop"); if(!id) return;
   cur.traits=(cur.traits||[]).filter(function(x){ return x!==id; });
   record("Trait dropped — "+TMAP[id].name, 0, "");
@@ -1975,6 +2048,48 @@ function renderKnight(){
   renderArch();
 }
 
+/* ---------------- whose sheet is this ---------------- */
+function renderMode(){
+  var foreign = !!cur._foreign, ro = foreign && !isAdmin();
+  $("page").classList.toggle("viewonly", ro);
+  var bar=$("viewBar");
+  bar.style.display = foreign ? "" : "none";
+  if(foreign){
+    bar.innerHTML = ro
+      ? "Viewing <b>"+esc(cur.name||"an unnamed character")+"</b>"+
+        (cur.player?" — played by "+esc(cur.player):"")+
+        ". This sheet belongs to another player and cannot be changed here."
+      : "Viewing <b>"+esc(cur.name||"an unnamed character")+"</b> as an admin. "+
+        "Anything you change here is saved to their sheet.";
+    bar.className = "viewbar" + (ro ? "" : " admin");
+  }
+  $("backBtn").style.display = foreign ? "" : "none";
+  $("delBtn").style.display = isAdmin() ? "" : "none";
+  var dis = ro;
+  ["f_name","f_house","f_age","f_gender","f_height","f_born","f_region","f_seat","f_titles",
+   "f_words","f_sigil","f_player","f_father","f_mother","f_spouse","f_liege","f_appearance",
+   "heritagePick","bodyPick","injuryPick","traitPick","commandPick","kRating","kCap",
+   "awardN","awardWhy","kAwardN","kAwardWhy","f_valyrian"].forEach(function(id){
+     var el=$(id); if(!el) return;
+     if(el.tagName==="SELECT" || el.type==="checkbox" || el.type==="file") el.disabled=dis;
+     else el.readOnly=dis;
+   });
+  ["awardBtn","kAwardBtn","lockBtn","resetBtn","portraitPick","portraitClear","dupBtn"]
+    .forEach(function(id){ var el=$(id); if(el) el.disabled=dis; });
+  STATS.forEach(function(s){
+    $("range-"+s.key).disabled=dis;
+    document.querySelector('[data-inc="'+s.key+'"]').disabled = dis ||
+      document.querySelector('[data-inc="'+s.key+'"]').disabled;
+    document.querySelector('[data-dec="'+s.key+'"]').disabled = dis ||
+      document.querySelector('[data-dec="'+s.key+'"]').disabled;
+  });
+  KNIGHT.forEach(function(s){ var r=$("krange-"+s.key); if(r) r.disabled=dis; });
+}
+$("backBtn").onclick=function(){
+  var mine=Store.all()[0];
+  if(mine) switchTo(mine); else switchTo(blank());
+};
+
 /* ---------------- lineage lock ---------------- */
 function renderLock(){
   var locked=!!cur.lineageLocked;
@@ -1985,6 +2100,7 @@ function renderLock(){
     : "Optional — leave it blank and fill it in whenever you like. Lock it once it is settled.";
 }
 $("lockBtn").onclick=function(){
+  if(denied()) return;
   cur.lineageLocked=!cur.lineageLocked;
   record(cur.lineageLocked?"Lineage locked":"Lineage unlocked",0,"");
   renderLock();
@@ -2075,6 +2191,7 @@ $("copyBtn").onclick=function(){
 };
 $("printBtn").onclick=function(){ window.print(); };
 $("resetBtn").onclick=function(){
+  if(denied()) return;
   if(!confirm("Set every score back to zero?")) return;
   STATS.forEach(function(s){ cur.scores[s.key]=0; });
   KNIGHT.forEach(function(s){ cur.knight[s.key]=0; });
@@ -2252,6 +2369,7 @@ $("portraitFile").onchange=function(e){
   fr.readAsDataURL(f); e.target.value="";
 };
 $("portraitClear").onclick=function(){
+  if(denied()) return;
   if(!cur.portrait) return;
   cur.portrait=""; Store.put(cur); drawPortrait(); record("Portrait removed",0,"");
 };
@@ -2277,7 +2395,8 @@ function fill(){
 }
 
 $("logoImg").src = LOGO;
-$("portraitPick").onclick=function(){ $("portraitFile").click(); };
+$("portraitPick").onclick=function(){
+  if(denied()) return; $("portraitFile").click(); };
 
 (function(){
   var pref=Store.pref("theme");
@@ -2355,6 +2474,7 @@ Cloud.start = function(){
 /* Send one character up. Called after every local save. */
 Cloud.push = function(c){
   if(!Cloud.ready) return;
+  if(c._foreign && !Cloud.admin) return;      // reading, not editing
   /* The prodigy mark lives in a table only admins may read. It must not
      travel inside the sheet blob, which everyone can select. */
   var safe = JSON.parse(JSON.stringify(c));
@@ -2450,6 +2570,55 @@ $("claimBtn").onclick = function(){
     Cloud.pull();
   });
 };
+
+/* ---- the realm: every sheet, readable by all ---- */
+var browseCache=[];
+function drawBrowse(filter){
+  var box=$("browseList");
+  var q=(filter||"").toLowerCase().trim();
+  var list=browseCache.filter(function(c){
+    if(!q) return true;
+    return ((c.name||"")+" "+(c.house||"")+" "+(c.player||"")+" "+(c.station||""))
+      .toLowerCase().indexOf(q)>-1;
+  });
+  if(!browseCache.length){ box.innerHTML="<p class='none'>Nothing to show yet.</p>"; return; }
+  if(!list.length){ box.innerHTML="<p class='none'>No one by that name.</p>"; return; }
+  box.innerHTML="<table>"+list.slice(0,300).map(function(c){
+    var sub=[c.house?"House "+c.house:"", c.station, c.age?"age "+c.age:"", c.player]
+      .filter(Boolean).join(" · ");
+    return "<tr><td><b>"+esc(c.name||"Unnamed")+"</b><br>"+
+      "<span style='color:var(--ink-3)'>"+esc(sub)+"</span></td>"+
+      "<td>"+(c.is_approved?"approved":"")+"</td>"+
+      "<td><button data-view='"+c.id+"'>View</button></td></tr>";
+  }).join("")+"</table>";
+}
+Cloud.browse = function(){
+  if(!Cloud.ready){ $("browseList").innerHTML=
+    "<p class='none'>The registry needs the server. Working offline.</p>"; return; }
+  $("browseList").innerHTML="<p class='none'>Loading…</p>";
+  Cloud.sb.from("characters")
+    .select("id,name,house,station,age,player,is_approved,updated_at")
+    .order("house",{ascending:true}).then(function(r){
+      if(r.error){ $("browseList").innerHTML="<p class='none'>"+esc(r.error.message)+"</p>"; return; }
+      browseCache=r.data||[];
+      $("browseCount").textContent=browseCache.length+" character"+(browseCache.length===1?"":"s");
+      drawBrowse($("browseSearch").value);
+    });
+};
+$("browseBtn").onclick=Cloud.browse;
+$("browseSearch").addEventListener("input",function(){ drawBrowse(this.value); });
+$("browseList").addEventListener("click",function(e){
+  var id=e.target.getAttribute("data-view"); if(!id) return;
+  Cloud.sb.from("characters").select("sheet,owner,claim_code,is_approved").eq("id",id).single()
+    .then(function(r){
+      if(r.error||!r.data||!r.data.sheet){ alert("That sheet could not be opened."); return; }
+      var c=r.data.sheet; c.id=id; c.owner=r.data.owner; c.is_approved=r.data.is_approved;
+      c.prodigy=false;
+      if(r.data.owner===Cloud.uid){ Store.write(PRE+"char."+id,c); switchTo(c); }
+      else openForeign(c);
+      window.scrollTo(0,0);
+    });
+});
 
 /* ---- admin registry ---- */
 $("registryBtn").onclick = function(){
