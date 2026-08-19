@@ -760,6 +760,7 @@ html.housed .ageTabBtn.cur{border-color:var(--accent);color:var(--accent)}
     made it, or an admin, may change anything.</p>
   <div class="bar" style="margin-top:10px">
     <button id="browseBtn">Load the registry</button>
+    <button id="purgeBtn" style="display:none">Sweep empty sheets</button>
     <input type="text" id="browseSearch" placeholder="Search name, house or player" style="flex:1 1 200px">
     <span class="rlen" id="browseCount"></span>
   </div>
@@ -779,6 +780,13 @@ html.housed .ageTabBtn.cur{border-color:var(--accent);color:var(--accent)}
     Your account lives in this browser and is tied to the address it was made on. Copy the key
     here <i>before</i> you move, then paste it on the new site to arrive as the same person —
     same characters, same admin rights.</p>
+  <p class="hint" style="margin-top:14px"><b>Connect Discord</b> and your account stops being
+    tied to this browser. Sign in with Discord anywhere — a new phone, a new address for the
+    site — and your characters and rights come with you.</p>
+  <div class="bar" style="margin-top:8px">
+    <button id="discordBtn">Connect Discord</button>
+    <span class="rlen" id="discordWho"></span>
+  </div>
   <div class="bar" style="margin-top:8px">
     <button id="sessCopy">Copy my account key</button>
     <input type="text" id="sessIn" placeholder="Paste an account key here" style="flex:1 1 200px">
@@ -1609,7 +1617,15 @@ $("dupBtn").onclick = function(){
 $("delBtn").onclick = function(){
   if(!isAdmin()){ flash("Only an admin may delete a character."); return; }
   if(!confirm("Delete "+label(cur)+" for good?")) return;
-  Store.del(cur.id); switchTo(Store.all()[0]||blank()); };
+  var gone=cur.id, label_=label(cur);
+  Store.del(gone);
+  if(window.Cloud && Cloud.ready && Cloud.admin){
+    Cloud.sb.from("characters").delete().eq("id",gone).then(function(r){
+      if(r.error) alert("The server refused: "+r.error.message);
+      else if(typeof drawBrowse==="function" && $("browseBtn")) $("browseBtn").click();
+    });
+  }
+  switchTo(Store.all()[0]||blank()); };
 
 /* ---- points ---- */
 /* ---------------- bonuses: granted, never bought ----------------
@@ -3105,8 +3121,10 @@ Cloud.start = function(){
       Cloud.admin = !!(p && p.data && p.data.is_admin);
       if(Cloud.admin){
         $("adminBox").style.display = "";
+        if($("purgeBtn")) $("purgeBtn").style.display = "";
         cloudStatus("Connected as an admin.","ok");
       }
+      discordState();
       if(typeof refreshAdminUI==="function") refreshAdminUI();
       Cloud.pull();
       Cloud.queue.forEach(function(fn){ fn(); }); Cloud.queue = [];
@@ -3118,9 +3136,19 @@ Cloud.start = function(){
 };
 
 /* Send one character up. Called after every local save. */
+function worthSaving(c){
+  if(!c) return false;
+  if((c.name||"").trim()) return true;
+  var spentAny = false;
+  try { spentAny = STATS.some(function(s){ return (c.scores||{})[s.key] > 0; }); } catch(e){}
+  return spentAny || !!(c.house||"").trim() || !!(c.player||"").trim();
+}
 Cloud.push = function(c){
   if(!Cloud.ready) return;
   if(c._foreign && !Cloud.admin) return;
+  /* A blank sheet is somebody who opened the page and left. Do not
+     litter the registry with them. */
+  if(!worthSaving(c)) return;
   /* The prodigy mark lives in a table only admins may read. It must not
      travel inside the sheet blob, which everyone can select. */
   var safe = JSON.parse(JSON.stringify(c));
@@ -3210,6 +3238,36 @@ function showClaim(){
 /* An anonymous account is stored per web address. Move the site to a new
    domain and the browser hands you a brand new person — new id, no admin,
    no characters. This carries the session across by hand. */
+/* Linking keeps the same user id, so nothing is lost: same characters,
+   same admin. Signing in fresh would create a different person. */
+function discordState(){
+  if(!Cloud.ready){ $("discordWho").textContent=""; return; }
+  Cloud.sb.auth.getUser().then(function(r){
+    var u=r.data && r.data.user; if(!u) return;
+    var ids=(u.identities||[]).filter(function(i){ return i.provider==="discord"; });
+    if(ids.length){
+      var m=ids[0].identity_data||{};
+      $("discordWho").textContent="Linked: "+(m.full_name||m.name||m.user_name||m.email||"Discord");
+      $("discordBtn").textContent="Discord connected";
+      $("discordBtn").disabled=true;
+    } else {
+      $("discordWho").textContent="Not linked to this browser only.";
+    }
+  });
+}
+$("discordBtn").onclick = function(){
+  if(!Cloud.ready){ alert("Not connected to the server yet."); return; }
+  var opts={ provider:"discord", options:{ redirectTo: window.location.href.split("#")[0] } };
+  var fn = Cloud.sb.auth.linkIdentity ? Cloud.sb.auth.linkIdentity(opts)
+                                      : Cloud.sb.auth.signInWithOAuth(opts);
+  Promise.resolve(fn).then(function(r){
+    if(r && r.error){
+      cloudStatus("Discord refused: "+r.error.message+
+        " (an admin must switch Discord on in Supabase first)","bad");
+    }
+  });
+};
+
 $("sessCopy").onclick = function(){
   if(!Cloud.ready){ alert("Not connected to the server yet."); return; }
   Cloud.sb.auth.getSession().then(function(r){
@@ -3288,7 +3346,9 @@ function drawBrowse(filter){
     return "<tr><td><b>"+esc(c.name||"Unnamed")+"</b><br>"+
       "<span style='color:var(--ink-3)'>"+esc(sub)+"</span></td>"+
       "<td>"+(c.is_approved?"approved":"")+"</td>"+
-      "<td><button data-view='"+c.id+"'>View</button></td></tr>";
+      "<td><button data-view='"+c.id+"'>View</button>"+
+      (Cloud.admin ? "<button data-del='"+c.id+"'>Delete</button>" : "")+
+      "</td></tr>";
   }).join("")+"</table>";
 }
 Cloud.browse = function(){
@@ -3305,8 +3365,37 @@ Cloud.browse = function(){
     });
 };
 $("browseBtn").onclick=Cloud.browse;
+/* Anything with no name, no house and no player is somebody who wandered
+   in and wandered off. Admins may clear them out. */
+$("purgeBtn").onclick=function(){
+  if(!Cloud.admin) return;
+  var junk=browseCache.filter(function(c){
+    return !(c.name||"").trim() && !(c.house||"").trim() && !(c.player||"").trim();
+  });
+  if(!junk.length){ alert("Nothing empty to sweep."); return; }
+  if(!confirm("Delete "+junk.length+" empty sheet"+(junk.length===1?"":"s")+"?")) return;
+  Cloud.sb.from("characters").delete().in("id",junk.map(function(c){ return c.id; }))
+    .then(function(r){
+      if(r.error){ alert("The server refused: "+r.error.message); return; }
+      junk.forEach(function(c){ Store.del(c.id); });
+      Cloud.browse();
+    });
+};
 $("browseSearch").addEventListener("input",function(){ drawBrowse(this.value); });
 $("browseList").addEventListener("click",function(e){
+  var del=e.target.getAttribute("data-del");
+  if(del){
+    if(!Cloud.admin){ alert("Only an admin may delete a character."); return; }
+    var row=browseCache.filter(function(c){ return c.id===del; })[0];
+    if(!confirm("Delete "+((row&&row.name)||"this character")+" from the registry for good?")) return;
+    Cloud.sb.from("characters").delete().eq("id",del).then(function(r){
+      if(r.error){ alert("The server refused: "+r.error.message); return; }
+      Store.del(del);
+      if(cur.id===del) switchTo(Store.all()[0]||blank());
+      Cloud.browse();
+    });
+    return;
+  }
   var id=e.target.getAttribute("data-view"); if(!id) return;
   Cloud.sb.from("characters").select("sheet,owner,claim_code,is_approved").eq("id",id).single()
     .then(function(r){
