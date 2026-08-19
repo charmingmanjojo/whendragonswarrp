@@ -263,10 +263,10 @@ html[data-theme="dark"] .facebox{filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)) br
 #browseList td:last-child{text-align:right;white-space:nowrap;width:1%}
 #browseList button{padding:5px 11px;min-height:32px}
 #browseList .none{padding:14px 9px;color:var(--ink-3);font-family:system-ui,sans-serif}
-#f_backstory,#f_history{width:100%;font-family:Georgia,serif;font-size:15.5px;padding:9px 10px;
+#f_backstory,#f_history,#f_personality{width:100%;font-family:Georgia,serif;font-size:15.5px;padding:9px 10px;
   border:1px solid var(--rule);background:var(--panel-alpha);color:var(--ink);resize:vertical;
   line-height:1.6}
-#f_backstory:focus,#f_history:focus{outline:2px solid var(--ink);outline-offset:-1px}
+#f_backstory:focus,#f_history:focus,#f_personality:focus{outline:2px solid var(--ink);outline-offset:-1px}
 .dragonbox{border:1px solid var(--rule);background:var(--panel-alpha);padding:14px}
 .dragonhead{display:flex;gap:16px;align-items:center}
 .dragonnum{font-size:44px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;
@@ -453,6 +453,25 @@ html.housed .ageTabBtn.cur{border-color:var(--accent);color:var(--accent)}
   <div class="bar" style="margin-top:10px"><button id="lockBtn">Lock lineage in</button></div>
   <p class="hint">Blood and marriage are kept apart, so a match can be added, ended or corrected
     without disturbing anyone's parentage.</p>
+</section>
+
+<section data-tab="History">
+  <h2>Personality</h2>
+  <div class="fields">
+    <div class="wide"><label for="f_temperament">Temperament</label>
+      <input id="f_temperament" data-f="temperament" placeholder="Cold, quick to laugh, slow to forgive" autocomplete="off"></div>
+    <div><label for="f_virtues">Virtues</label>
+      <input id="f_virtues" data-f="virtues" placeholder="Loyal, patient" autocomplete="off"></div>
+    <div><label for="f_vices">Vices</label>
+      <input id="f_vices" data-f="vices" placeholder="Proud, drinks too deep" autocomplete="off"></div>
+    <div><label for="f_fears">Fears</label>
+      <input id="f_fears" data-f="fears" placeholder="Drowning, being forgotten" autocomplete="off"></div>
+    <div class="wide"><label for="f_goal">What they want</label>
+      <input id="f_goal" data-f="goal" placeholder="The seat their father lost" autocomplete="off"></div>
+  </div>
+  <label for="f_personality" style="margin-top:14px">In their own right</label>
+  <textarea id="f_personality" data-f="personality" rows="6"
+    placeholder="How they speak, how they treat servants, what they are like drunk, what they will not do."></textarea>
 </section>
 
 <section>
@@ -755,6 +774,15 @@ html.housed .ageTabBtn.cur{border-color:var(--accent);color:var(--accent)}
   <div class="bar" style="margin-top:10px">
     <input type="text" id="claimInput" placeholder="Paste a recovery code" style="flex:1 1 180px">
     <button id="claimBtn">Recover a character</button>
+  </div>
+  <p class="hint" style="margin-top:14px"><b>Moving the site to a new address?</b>
+    Your account lives in this browser and is tied to the address it was made on. Copy the key
+    here <i>before</i> you move, then paste it on the new site to arrive as the same person —
+    same characters, same admin rights.</p>
+  <div class="bar" style="margin-top:8px">
+    <button id="sessCopy">Copy my account key</button>
+    <input type="text" id="sessIn" placeholder="Paste an account key here" style="flex:1 1 200px">
+    <button id="sessRestore">Restore my account</button>
   </div>
   <div id="adminBox" style="display:none;margin-top:16px">
     <h2>Registry — admin</h2>
@@ -1381,6 +1409,7 @@ var STATS = [
 var FIELDS = ["name","station","house","age","gender","height","weight","born","region","seat",
               "titles","words","sigil","player","father","mother","spouse","liege",
               "backstory","history","dragonName",
+              "personality","temperament","virtues","vices","fears","goal",
               "equipWeapons","equipArmor","equipMounts","equipValuables","equipNotes",
               "buildOverride"];
 var LINEAGE = ["father","mother","spouse","liege"];
@@ -2041,6 +2070,14 @@ function armsFor(name){
   return null;
 }
 
+/* A few sigils are mostly black or white, where the extracted colour
+   says nothing about the house. These are set by hand. */
+var ARMS_OVERRIDE = {
+  Targaryen:"#B4232C", Stark:"#5A626B", Greyjoy:"#C8A24A", Bolton:"#8C1420",
+  Blacktyde:"#0C780C", Beesbury:"#E4B400", Bolling:"#B48C2C", Broom:"#9A7A3C"
+};
+function chroma(h){ var c=hx(h); return (Math.max.apply(null,c)-Math.min.apply(null,c))/255; }
+
 function applyHouseTheme(got){
   var root=document.documentElement;
   if(!got){
@@ -2051,15 +2088,18 @@ function applyHouseTheme(got){
   }
   var dark = root.getAttribute("data-theme")==="dark";
   var f=got.a.f, c=got.a.c;
-  /* A white field vanishes on parchment and a black one vanishes at night,
-     so in those cases the charge carries the colour instead. */
-  var accent=f, L=lumi(f);
-  if(!dark && L>0.74) accent=c;
-  if(dark  && L<0.16) accent=c;
-  /* keep it legible against whichever page it sits on */
-  var AL=lumi(accent);
-  if(!dark && AL>0.72) accent=mix(accent,"#1a1816",0.42);
-  if(dark  && AL<0.20) accent=mix(accent,"#f2efe8",0.42);
+  var base = ARMS_OVERRIDE[got.key] || ARMS_OVERRIDE[got.key.split(" of ")[0]] || null;
+  if(!base){
+    /* whichever tincture actually carries colour */
+    base = chroma(c) > chroma(f) + 0.08 ? c : f;
+  }
+  var accent = base, L = lumi(accent);
+  /* keep it legible on whichever page it sits on, without losing the hue */
+  if(!dark && L > 0.62) accent = mix(accent, "#1a1816", 0.30 + (L - 0.62));
+  if(dark  && L < 0.28) accent = mix(accent, "#f2efe8", 0.34 + (0.28 - L));
+  if(chroma(accent) < 0.06){                      /* pure greys need a nudge */
+    accent = dark ? mix(accent, "#f2efe8", 0.35) : mix(accent, "#1a1816", 0.25);
+  }
 
   root.style.setProperty("--house-field",f);
   root.style.setProperty("--house-charge",c);
@@ -2641,6 +2681,7 @@ function renderMode(){
    "f_words","f_sigil","f_player","f_father","f_mother","f_spouse","f_liege","f_appearance",
    "heritagePick","bodyPick","injuryPick","traitPick","commandPick","kRating","kCap",
    "f_weight","f_backstory","f_history","f_dragonName",
+   "f_personality","f_temperament","f_virtues","f_vices","f_fears","f_goal",
    "f_equipWeapons","f_equipArmor","f_equipMounts","f_equipValuables","f_equipNotes",
    "awardN","awardWhy","kAwardN","kAwardWhy","f_valyrian"].forEach(function(id){
      var el=$(id); if(!el) return;
@@ -2910,6 +2951,14 @@ function readingText(){
   var ht=hiddenFound();
   if(ht.length) out.push("\nTITLES\n"+ht.map(function(t){ return t.name; }).join("\n"));
   if(cur.appearance) out.push("\nAPPEARANCE\n"+cur.appearance);
+  var pers=[];
+  if(cur.temperament) pers.push("Temperament: "+cur.temperament);
+  if(cur.virtues) pers.push("Virtues: "+cur.virtues);
+  if(cur.vices) pers.push("Vices: "+cur.vices);
+  if(cur.fears) pers.push("Fears: "+cur.fears);
+  if(cur.goal) pers.push("Wants: "+cur.goal);
+  if(pers.length) out.push("\nPERSONALITY\n"+pers.join("\n"));
+  if(cur.personality) out.push((pers.length?"":"\nPERSONALITY")+"\n"+cur.personality);
   if(cur.backstory) out.push("\nBACKSTORY\n"+cur.backstory);
   if(cur.history)   out.push("\nHISTORY\n"+cur.history);
   return out.join("\n");
@@ -3158,6 +3207,59 @@ function showClaim(){
 }
 
 /* Recover a sheet on a new device. */
+/* An anonymous account is stored per web address. Move the site to a new
+   domain and the browser hands you a brand new person — new id, no admin,
+   no characters. This carries the session across by hand. */
+$("sessCopy").onclick = function(){
+  if(!Cloud.ready){ alert("Not connected to the server yet."); return; }
+  Cloud.sb.auth.getSession().then(function(r){
+    var ss = r.data && r.data.session;
+    if(!ss){ alert("No session to copy."); return; }
+    var blob = btoa(JSON.stringify({
+      v:1, a: ss.access_token, r: ss.refresh_token, u: Cloud.uid
+    }));
+    function done(){
+      cloudStatus("Account key copied. Paste it on the new site, then delete it from anywhere else.","ok");
+    }
+    if(navigator.clipboard) navigator.clipboard.writeText(blob).then(done, fb); else fb();
+    function fb(){
+      var t=document.createElement("textarea"); t.value=blob;
+      document.body.appendChild(t); t.select();
+      try{ document.execCommand("copy"); }catch(e){}
+      t.remove(); done();
+    }
+  });
+};
+$("sessRestore").onclick = function(){
+  if(!Cloud.ready){ alert("Not connected to the server yet."); return; }
+  var raw = $("sessIn").value.trim();
+  if(!raw) return;
+  var d;
+  try { d = JSON.parse(atob(raw)); } catch(e){ alert("That is not an account key."); return; }
+  if(!d || !d.a || !d.r){ alert("That key is incomplete."); return; }
+  cloudStatus("Restoring your account…");
+  Cloud.sb.auth.setSession({ access_token: d.a, refresh_token: d.r }).then(function(r){
+    if(r.error){
+      cloudStatus("That key would not restore: "+r.error.message+
+        " Keys expire — copy a fresh one from the old site.","bad");
+      return;
+    }
+    $("sessIn").value = "";
+    var u = r.data && (r.data.user || (r.data.session && r.data.session.user));
+    Cloud.uid = u ? u.id : Cloud.uid;
+    return Cloud.sb.from("profiles").select("is_admin").eq("user_id", Cloud.uid).single()
+      .then(function(p){
+        Cloud.admin = !!(p && p.data && p.data.is_admin);
+        if(Cloud.admin) $("adminBox").style.display = "";
+        cloudStatus("Account restored"+(Cloud.admin?" — admin":"")+". Loading your characters…","ok");
+        Cloud.pull();
+        render();
+      });
+  }).catch(function(e){
+    cloudStatus("Could not restore that account.","bad"); console.error(e);
+  });
+};
+
 $("claimBtn").onclick = function(){
   var code = $("claimInput").value.trim();
   if(!code || !Cloud.ready) return;
