@@ -328,14 +328,23 @@ html.housed .ageTabBtn.cur{border-color:var(--accent);color:var(--accent)}
 .tutwrap{position:fixed;inset:0;z-index:200;background:rgba(28,18,6,.62);
   display:flex;align-items:center;justify-content:center;padding:18px}
 .tut{background:var(--panel);border:1px solid var(--rule);max-width:560px;width:100%;
-  padding:26px 26px 18px;position:relative;box-shadow:0 18px 50px rgba(0,0,0,.4);
-  max-height:88vh;overflow:auto}
-.tut h3{font-family:Georgia,serif;font-size:23px;color:var(--flag);margin-bottom:12px}
-.tut p{font-size:15px;line-height:1.6;margin-bottom:11px;color:var(--ink)}
+  padding:22px 22px 14px;position:relative;box-shadow:0 18px 50px rgba(0,0,0,.4);
+  max-height:86vh;display:flex;flex-direction:column}
+#tutBody{overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  padding-right:4px;flex:1 1 auto;min-height:0}
+.tut h3{font-family:Georgia,serif;font-size:20px;color:var(--flag);margin-bottom:10px;
+  position:sticky;top:0;background:var(--panel);padding-bottom:6px}
+.tut p{font-size:14.5px;line-height:1.55;margin-bottom:10px;color:var(--ink)}
 .tutx{position:absolute;top:8px;right:8px;border:0;background:none;font-size:24px;
   line-height:1;padding:4px 9px;min-height:0;color:var(--ink-3)}
-.tutfoot{display:flex;align-items:center;justify-content:space-between;gap:12px;
-  margin-top:16px;border-top:1px solid var(--rule-2);padding-top:14px}
+.tutfoot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none;
+  margin-top:12px;border-top:1px solid var(--rule-2);padding-top:12px;background:var(--panel)}
+@media (max-width:520px){
+  .tutwrap{padding:10px}
+  .tut{padding:18px 16px 12px;max-height:92vh}
+  .tut h3{font-size:18px}
+  .tut p{font-size:14px}
+}
 .tutdots{display:flex;gap:5px}
 .tutdots .dot{width:7px;height:7px;border-radius:50%;background:var(--rule)}
 .tutdots .dot.on{background:var(--flag)}
@@ -350,6 +359,15 @@ button.primary{background:var(--flag);border-color:var(--flag);color:#241900;fon
 .hint{font-size:12px;line-height:1.5;opacity:.88}
 section{margin-top:22px}
 h2{letter-spacing:.16em}
+.savedtag{display:block;text-align:right;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-3);opacity:0;transition:opacity .25s;
+  font-family:system-ui,sans-serif;margin-bottom:-6px;height:14px}
+.savedtag.on{opacity:1;color:var(--flag)}
+.tabbar{flex-wrap:wrap}
+/* fewer, quieter rules inside a tab so a page reads as one thing */
+.tabpanel section:first-child{margin-top:14px}
+.tabpanel h2{margin-bottom:10px}
+.tabpanel .hint{max-width:70ch}
 @media (max-width:520px){.arms .shield{width:54px;height:60px}.arms .shield img{width:34px}}
 @media (max-width:520px){.arms .shield{width:52px;height:58px}.arms .shield svg{width:32px;height:32px}}
 @media (max-width:520px){
@@ -425,6 +443,7 @@ h2{letter-spacing:.16em}
 <p class="viewbar" id="viewBar" style="display:none"></p>
 <p class="denyflash" id="denyFlash" style="display:none"></p>
 
+<span class="savedtag" id="savedTag">Saved</span>
 <div class="tabbar" id="tabbar">
   <button class="tabbtn" data-tab="tabSheet">Sheet</button>
   <button class="tabbtn" data-tab="tabEquipment">Equipment</button>
@@ -618,6 +637,9 @@ h2{letter-spacing:.16em}
     </div>
     <select id="traitPick"></select>
     <div class="traitlist" id="traitList"></div>
+    <p class="hint">A trait gives <b>up to +5</b>. It gives less if the attribute paying the
+      &minus;3 has nothing to give, or if you already have a trait boosting the same attribute.
+      The chips below show what you are actually getting.</p>
     <p class="flagbox stop" id="traitWaste" style="display:none"></p>
   </div>
   <div class="comp">
@@ -1526,6 +1548,7 @@ var Store = {
   remove:function(k){ if(canSave){ try{ localStorage.removeItem(k); }catch(e){} } else delete memory[k]; },
   all:function(){ return this.keys().map(this.read.bind(this)).filter(Boolean); },
   put:function(c){ c.updated=new Date().toISOString(); this.write(PRE+"char."+c.id,c);
+    if(typeof flashSaved==="function") flashSaved();
     if(window.Cloud && Cloud.ready) Cloud.push(c); },
   del:function(id){ this.remove(PRE+"char."+id); },
   pref:function(k,v){ if(arguments.length>1) this.write(PRE+k,v); return this.read(PRE+k); }
@@ -1651,6 +1674,7 @@ function drawRoster(){
   }).join("");
   $("delBtn").style.display = isAdmin() ? "" : "none";
   $("delBtn").disabled = list.length < 2;
+  gateAdmin();
   document.querySelectorAll(".award").forEach(function(el){
     el.style.display = isAdmin() ? "" : "none"; });
 }
@@ -1668,7 +1692,12 @@ $("rosterSel").onchange = function(){
 $("newBtn").onclick = function(){ switchTo(blank()); $("f_name").focus(); };
 $("dupBtn").onclick = function(){
   var c=JSON.parse(JSON.stringify(cur)); c.id=uid();
-  c.name=(c.name||"Unnamed")+" (copy)"; c.created=new Date().toISOString(); switchTo(c); };
+  c.name=(c.name||"Unnamed")+" (copy)"; c.created=new Date().toISOString();
+  /* A copy has not been judged. Carrying approval across would let anyone
+     duplicate an approved sheet and skip review entirely. */
+  c.is_approved=false; c.submitted=false; c.isDead=false; c.deathNote="";
+  c.claim_code=""; c.log=[]; c.ages=[]; c.prodigy=false;
+  switchTo(c); };
 $("delBtn").onclick = function(){
   if(!isAdmin()){ flash("Only an admin may delete a character."); return; }
   if(!confirm("Delete "+label(cur)+" for good?")) return;
@@ -2023,7 +2052,8 @@ function render(){
   STATS.forEach(function(s,i){
     var hard=capFor(s.key), ceil=Math.min(MAX,hard,v0(s.key)+remaining);
     var v=cur.scores[s.key];
-    var b=bonusFor(s.key), t=v+b;
+    /* show the clamped total, and a badge for only the part that survived */
+    var t=total(s.key), b=t-v;
     if(isRetired(s.key)){
       $("num-"+s.key).innerHTML = '<span class="na">N/A</span>';
     } else {
@@ -2053,7 +2083,7 @@ function render(){
   $("page").className="page"+(over?" over":"");
   drawComposition("compBar","compList",STATS,function(k){ return total(k); });
   renderArms(); renderTraits(); renderHeritage(); renderYouthNote(); renderBonusNote();
-  renderKnight(); renderDragon(); renderPromised(); renderStatus(); renderLock(); renderMode();
+  renderKnight(); renderDragon(); renderPromised(); renderStatus(); gateAdmin(); renderLock(); renderMode();
   renderReading();
   renderBuildBadge();
   $("sheet").textContent=sheetText();
@@ -2384,7 +2414,7 @@ $("commandList").addEventListener("click",function(e){
     html+='<optgroup label="'+s.name+'">';
     groups[s.key].forEach(function(t){
       var m=STATS.filter(function(x){ return x.key===t.minus; })[0];
-      html+='<option value="'+t.id+'">'+t.name+' — +'+TRAIT_PLUS+' '+s.name+
+      html+='<option value="'+t.id+'">'+t.name+' — up to +'+TRAIT_PLUS+' '+s.name+
             ', '+TRAIT_MINUS+' '+(m?m.name:t.minus)+'</option>';
     });
     html+='</optgroup>';
@@ -2423,20 +2453,32 @@ function traitWaste(){
 }
 function renderTraits(){
   var list=traitList(), box=$("traitList"), eff=traitEffects();
-  var waste=traitWaste(), w=$("traitWaste");
-  w.style.display = waste.length ? "" : "none";
-  var owed=[];
-  traitList().forEach(function(t){
-    var have=cur.scores[t.minus]||0;
-    if(have < Math.abs(TRAIT_MINUS))
-      owed.push(attrName(t.minus)+" cannot pay "+Math.abs(TRAIT_MINUS)+
-        ", so "+(Math.abs(TRAIT_MINUS)-have)+" comes off "+attrName(t.plus));
+  var w=$("traitWaste"), notes=[];
+
+  /* a gift lost over the ceiling */
+  traitWaste().forEach(function(x){ notes.push(x); });
+
+  /* a price the attribute could not pay, taken out of the gift instead */
+  var rem={};
+  list.forEach(function(t){
+    if(!(t.minus in rem)) rem[t.minus]=cur.scores[t.minus]||0;
+    var owe=Math.abs(TRAIT_MINUS)-Math.min(Math.abs(TRAIT_MINUS), rem[t.minus]);
+    rem[t.minus]=Math.max(0, rem[t.minus]-Math.abs(TRAIT_MINUS));
+    if(owe) notes.push(t.name+": "+attrName(t.minus)+" cannot pay "+owe+
+      ", so "+owe+" comes off the "+attrName(t.plus)+" it gives");
   });
-  if(owed.length) waste=waste.concat(owed);
-  w.innerHTML = waste.length
-    ? "Wasted: "+waste.join(", ")+". Nothing passes "+MAX+
-      ", so the gift is being thrown away while the penalty still bites."
-    : "";
+
+  /* a second trait into the same attribute */
+  var seen={};
+  list.forEach(function(t){
+    seen[t.plus]=(seen[t.plus]||0)+1;
+    if(seen[t.plus]===2) notes.push(t.name+": a second trait in "+attrName(t.plus)+
+      " gives only +"+TRAIT_REPEAT);
+  });
+
+  w.style.display = notes.length ? "" : "none";
+  w.innerHTML = notes.length ? notes.join(".<br>")+"." : "";
+
   $("traitPick").disabled = list.length>=TRAIT_LIMIT;
   $("traitCount").textContent = list.length+" of "+TRAIT_LIMIT;
   if(!list.length){ box.innerHTML='<span class="cnone">None taken.</span>'; return; }
@@ -2445,7 +2487,8 @@ function renderTraits(){
     var m=STATS.filter(function(x){ return x.key===t.minus; })[0];
     return '<span class="trait"><b>'+esc(t.name)+'</b> '+
       '<span class="up">'+(eff[t.plus]>0?"+":"")+(eff[t.plus]||0)+' '+esc(p?p.name:t.plus)+'</span> '+
-      '<span class="down">'+(eff[t.minus]||0)+' '+esc(m?m.name:t.minus)+'</span>'+
+      '<span class="down">'+((eff[t.minus]||0)===0 ? 'nothing left to take'
+        : (eff[t.minus]+' '+esc(m?m.name:t.minus)))+'</span>'+
       '<button data-drop="'+t.id+'" aria-label="Drop '+esc(t.name)+'">&times;</button></span>';
   }).join("");
 }
@@ -2541,7 +2584,7 @@ function renderKnight(){
 
   KNIGHT.forEach(function(s,i){
     var v=cur.knight[s.key]||0, ceil=Math.min(cap,v+remaining);
-    var b=knightBonusFor(s.key), t=Math.min(cap, v+b);
+    var t=knightTotal(s.key), b=t-v;
     $("knum-"+s.key).innerHTML = t + (b ? '<span class="bonus">+'+b+'</span>' : "");
     $("knum-"+s.key).className="num"+(t===0?" zero":"");
     $("krank-"+s.key).textContent = knightBand(t) +
@@ -2595,8 +2638,8 @@ function dragonOpen(){ return isTargBlood() && !!cur.hasDragon; }
 /* A dragon is not a horse, but the seat is the same problem twice over.
    Nobody flies better than they ride. */
 function dragonCeiling(){
-  if(knightUnlocked()) return knightTotal("riding");
-  return Math.floor(total("athletics")/2);
+  if(knightUnlocked()) return Math.max(0, knightTotal("riding"));
+  return Math.max(0, Math.floor(total("athletics")/2));
 }
 function dragonScore(){ return Math.max(0, Math.min(dragonCeiling(), cur.dragon||0)); }
 function setDragon(v){
@@ -2696,6 +2739,114 @@ function renderPromised(){ refreshTitles(); drawTitles(); }
 
 
 /* ---------------- whose sheet is this ---------------- */
+/* One place decides what only an admin may see or touch. */
+var ADMIN_ONLY = ["delBtn","purgeBtn","approveBtn","rejectBtn","deadBtn","adminJudge",
+                  "f_prodigy","f_anomaly","f_hasDragon","f_hasDragonTop","prodigyRow",
+                  "anomalyRow","dragonAdminRow","dragonOwn","grantPick","grantBtn",
+                  "buildAdmin","tieFrom","tieKind","tieTo","tieAdd","treeAdmin",
+                  "adminBox","ageApproveWrap"];
+function safeOn(id, fn){
+  var el = document.getElementById(id);
+  if(el) el.onclick = fn;
+}
+function gateAdmin(){
+  var a = isAdmin();
+  ADMIN_ONLY.forEach(function(id){
+    var el = document.getElementById(id); if(!el) return;
+    if(el.tagName === "INPUT" || el.tagName === "SELECT" || el.tagName === "BUTTON")
+      el.disabled = !a;
+    el.style.display = a ? "" : "none";
+  });
+}
+
+/* ============================================================
+   LAYOUT — one long scroll became eleven sections stacked in a
+   single tab. Deal them out by what they are for.
+   ============================================================ */
+var TAB_PLAN = [
+  ["tabChar",  "Character", ["Character","Lineage"]],
+  ["tabStats", "Stats",     ["Attributes","__points"]],
+  ["tabKnight","Knight",    ["Knight","Dragonriding","Builds"]],
+  ["tabStory", "Story",     ["Personality","Backstory"]],
+  ["tabEquipment","Equipment",[]],
+  ["tabFamily","Family",    []],
+  ["tabAges",  "Ages",      []],
+  ["tabWorld", "Registry",  ["The realm","Server"]],
+  ["tabRecord","Record",    ["Record","Build summary","Plain text"]]
+];
+function showTab(id){
+  d_all(".tabpanel").forEach(function(p){ p.classList.toggle("active", p.id === id); });
+  d_all(".tabbtn").forEach(function(b){
+    b.classList.toggle("active", b.getAttribute("data-tab") === id); });
+  try { Store.pref("tab", id); } catch(e){}
+  window.scrollTo(0, 0);
+}
+function layOutTabs(){
+  var host = document.getElementById("tabSheet");
+  if(!host || host.getAttribute("data-dealt")) return;
+  host.setAttribute("data-dealt","1");
+
+  /* label every loose section by its heading so it can be placed */
+  var loose = [];
+  Array.prototype.slice.call(document.querySelectorAll("section")).forEach(function(sec){
+    if(sec.closest("#tabEquipment") || sec.closest("#tabFamily") || sec.closest("#tabAges")) return;
+    var h = sec.querySelector("h2");
+    sec.__label = h ? h.textContent.trim() : "__points";
+    loose.push(sec);
+  });
+
+  var bar = document.getElementById("tabbar");
+  bar.innerHTML = "";
+  TAB_PLAN.forEach(function(t){
+    var id = t[0], label = t[1], wants = t[2];
+    var panel = document.getElementById(id);
+    if(!panel){
+      panel = document.createElement("div");
+      panel.id = id; panel.className = "tabpanel";
+      host.parentNode.insertBefore(panel, host);
+    }
+    wants.forEach(function(want){
+      loose.forEach(function(sec){
+        if(sec.__placed) return;
+        if(sec.__label === want || (want === "Builds" && sec.querySelector("#buildList"))){
+          sec.__placed = true; panel.appendChild(sec);
+        }
+      });
+    });
+    var b = document.createElement("button");
+    b.className = "tabbtn"; b.setAttribute("data-tab", id); b.textContent = label;
+    bar.appendChild(b);
+  });
+
+  /* anything unclaimed keeps a home rather than vanishing */
+  var spill = document.getElementById("tabStats");
+  loose.forEach(function(sec){ if(!sec.__placed) spill.appendChild(sec); });
+  /* the old wrapper may still hold loose pieces — the titles panel among
+     them. Move them, do not throw them away with the box. */
+  while(host.firstChild){
+    var node = host.firstChild;
+    host.removeChild(node);
+    if(node.nodeType === 1 || (node.textContent||"").trim()) spill.appendChild(node);
+  }
+  host.parentNode.removeChild(host);
+
+  document.querySelectorAll(".tabbtn").forEach(function(b){
+    b.addEventListener("click", function(){ showTab(b.getAttribute("data-tab")); });
+  });
+  showTab(Store.pref("tab") || "tabChar");
+}
+
+/* ---- the sheet saves itself; say so, so nobody hunts for a button ---- */
+var saveTimer;
+function flashSaved(){
+  var el = document.getElementById("savedTag"); if(!el) return;
+  el.textContent = "Saved";
+  el.classList.add("on");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function(){ el.classList.remove("on"); }, 1200);
+}
+
+function d_all(q){ return Array.prototype.slice.call(document.querySelectorAll(q)); }
 function renderMode(){
   var foreign = !!cur._foreign, ro = foreign && !isAdmin();
   $("page").classList.toggle("viewonly", ro);
@@ -2713,27 +2864,22 @@ function renderMode(){
   $("backBtn").style.display = foreign ? "" : "none";
   $("delBtn").style.display = isAdmin() ? "" : "none";
   var dis = ro;
-  ["f_name","f_house","f_age","f_gender","f_height","f_born","f_region","f_seat","f_titles",
-   "f_words","f_sigil","f_player","f_father","f_mother","f_spouse","f_liege","f_appearance",
-   "heritagePick","bodyPick","injuryPick","traitPick","commandPick","kRating","kCap",
-   "f_weight","f_backstory","f_history","f_dragonName",
-   "f_personality","f_temperament","f_virtues","f_vices","f_fears","f_goal",
-   "f_equipWeapons","f_equipArmor","f_equipMounts","f_equipValuables","f_equipNotes",
-   "awardN","awardWhy","kAwardN","kAwardWhy","f_valyrian"].forEach(function(id){
-     var el=$(id); if(!el) return;
-     if(el.tagName==="SELECT" || el.type==="checkbox" || el.type==="file") el.disabled=dis;
-     else el.readOnly=dis;
-   });
-  ["awardBtn","kAwardBtn","lockBtn","resetBtn","portraitPick","portraitClear","dupBtn"]
-    .forEach(function(id){ var el=$(id); if(el) el.disabled=dis; });
-  STATS.forEach(function(s){
-    $("range-"+s.key).disabled=dis;
-    document.querySelector('[data-inc="'+s.key+'"]').disabled = dis ||
-      document.querySelector('[data-inc="'+s.key+'"]').disabled;
-    document.querySelector('[data-dec="'+s.key+'"]').disabled = dis ||
-      document.querySelector('[data-dec="'+s.key+'"]').disabled;
+  /* Lock everything inside the sheet itself. Anything a player may still
+     use while reading someone else's sheet is listed as an exception,
+     rather than everything they may not — a list that kept going stale. */
+  var ALWAYS_LIVE = { rosterSel:1, browseSearch:1, claimInput:1, sessIn:1,
+                      famHouseSel:1, treeHouse:1, eqName:1, eqType:1, eqNote:1 };
+  d_all("#page input, #page select, #page textarea").forEach(function(el){
+    if(el.type === "hidden") return;
+    if(ALWAYS_LIVE[el.id]) return;
+    if(el.closest && el.closest("#tutWrap")) return;
+    if(el.tagName === "SELECT" || el.type === "checkbox" || el.type === "file" ||
+       el.type === "range" || el.type === "button"){
+      el.disabled = dis;
+    } else {
+      el.readOnly = dis;
+    }
   });
-  KNIGHT.forEach(function(s){ var r=$("krange-"+s.key); if(r) r.disabled=dis; });
 }
 $("backBtn").onclick=function(){
   var mine=Store.all()[0];
@@ -2883,12 +3029,14 @@ function readingText(){
            : "Balanced, leaning "+ranked[0].s.name;
   out.push("\nBUILD: "+kind);
   out.push("Points: "+spent()+" of "+budget()+" spent"+
-    (left()?", "+left()+" unspent":"")+". Ceiling "+MAX+" each.");
+    (left()>0 ? ", "+left()+" unspent"
+      : left()<0 ? ", OVER BY "+Math.abs(left())
+      : "")+". Ceiling "+MAX+" each.");
 
   /* every attribute, in order, with the share of the total */
   out.push("\nATTRIBUTES");
   ranked.forEach(function(r){
-    var b=bonusFor(r.s.key);
+    var b=r.t-(cur.scores[r.s.key]||0);
     out.push(pad(r.s.name,19)+(r.t<10?" ":"")+r.t+
       "  "+pad(r.s.tiers[tierOf(r.t)],22)+
       pad(pct(r.t/sum*100),5)+
@@ -2952,7 +3100,9 @@ function readingText(){
     var rating=knightRating(), cap=knightCap();
     out.push("\nKNIGHT: Overall "+rating+" — "+rankFor(rating));
     out.push("Points: "+knightSpent()+" of "+knightBudget()+" spent"+
-      (knightLeft()?", "+knightLeft()+" unspent":"")+". Cap "+cap+" each.");
+      (knightLeft()>0 ? ", "+knightLeft()+" unspent"
+        : knightLeft()<0 ? ", OVER BY "+Math.abs(knightLeft())
+        : "")+". Cap "+cap+" each.");
     var kr=KNIGHT.map(function(s){ return {s:s,t:knightTotal(s.key)}; })
       .sort(function(a,b){ return b.t-a.t; });
     var ksum=kr.reduce(function(a,r){ return a+r.t; },0)||1;
@@ -3117,32 +3267,33 @@ function fill(){
 /* ---------------- the tutorial ---------------- */
 var TUT=[
  {h:"Welcome to When Dragons War",
-  p:["This is your character sheet. It saves as you type. Nothing is final until an admin approves it.",
-     "About five minutes to make someone. You can change anything afterwards."]},
+  p:["This is your character sheet. It's slightly different from Google Docs or other templates you're used to, but it's all the same."]},
+
  {h:"Who are they",
-  p:["Name, age, house. Type any house and its words, region, seat and sigil fill themselves — 463 of them are in here, and the page takes your house's colours.",
-     "Not everyone is a lord. Station covers bastards, hedge knights, smallfolk, maesters and the rest.",
-     "Your age decides your points: 39 under 16, 70 under 18, 115 after that."]},
+  p:["This character sheet allows you to join any house, whether it's Great or Small. We have over <b>463</b> of the Houses of Westeros in our database for you to choose from.",
+     "You do not have to be a Great Lord or the Heir to a Noble House. You can choose to be a Bastard, a Hedgeknight, Smallfolk, a Merchant, an Essosi, etc.",
+     "In When Dragons War, to ensure some accuracy, your age decides your stat point cap &mdash; this being <b>39 Points</b> max if you're under 16, <b>70 points</b> if you're under 18, and <b>115</b> if you're 18+.",
+     "The Stat caps can be circumvented by the Prodigy Trait.",
+     "You may also have extra points assigned based on your backstory/history, which requires approval by Hirosamei."]},
+
  {h:"Nobody is good at everything",
-  p:["115 points across thirteen attributes averages 8. That is the honest picture — most people are ordinary at most things.",
-     "A 20 is notable. A 30 makes you known for it. A 40 means songs.",
-     "Decide what your character <i>is</i> before spending. Two or three things they excel at, a few they manage, and some they are plainly bad at. The weaknesses matter as much as the strengths."]},
- {h:"Shapes that work",
-  p:["<b>The specialist.</b> One attribute near the ceiling, the rest thin. Terrifying in their lane, useless outside it.",
-     "<b>The broad hand.</b> Nothing above 20, nothing below 8. Never the best in the room, always useful.",
-     "<b>The pair.</b> Two things high that reinforce each other — Intrigue and Deception, Martial and Athletics, Stewardship and Knowledge. Usually the strongest build.",
-     "The bar under your attributes tells you which you have made."]},
- {h:"What you are given",
-  p:["Some things you do not pay for. Nobleborn get +5 Knowledge. Valyrian blood, +10 Beauty. Baratheon men, +6 Athletics.",
-     "Heritage, build and afflictions all move your numbers.",
-     "Traits give +5 and cost 3 elsewhere — and you cannot dodge that cost by dumping an attribute to nothing. Two traits into the same attribute pay less the second time."]},
+  p:["We understand that you've come here to roleplay great people, but we must let you know that even great people are ordinary at most things.",
+     "In the Roleplay, the <b>115 Points</b> (assuming your OC is 18+) are spread across thirteen attributes, meaning <b>8 is the average</b>, ordinary spread if you were going for a most balanced build.",
+     "We try to minimize minimaxing as much as possible, but at the end of the day your character build is up to you.",
+     "A bit of advice: decide who your character is before you spend any points."]},
+
+ {h:"Buffs &amp; Debuffs",
+  p:["In When Dragons War, there are buffs and debuffs. For example, Nobleborn OCs are granted <b>+5 Knowledge</b> due to their upbringing with Maesters and whatnot, and those of Valyrian Blood, such as the Targaryens or Velaryons, are blessed with a <b>+10 Beauty</b>, etc.",
+     "These traits are assigned through Heritage, (Physical) Build, and afflictions.",
+     "Most traits follow the law of equivalent exchange: a trait may give you +5 in one attribute but -3 in another, to balance the scales."]},
+
  {h:"Knights",
-  p:["Reach 16 Martial and a second sheet opens, with its own points across Strength, Defense, Skill, Riding, Resolve and Camaraderie.",
-     "Get two of them high together and you earn a build — the Duelist, the Iron Wall, the Heavy Cavalier. You do not pick these. They are earned by the numbers."]},
+  p:["To all of my Knights: you have an extra, separate stat sheet strictly for your combative ability as a Knight, only accessible by reaching <b>16</b> in the Martial Attribute.",
+     "The Knight sheet covers Strength, Defense, Skill, Resolve, and Camaraderie.",
+     "If you reach <b>30</b> in two attributes, you will have achieved a build unique to your character."]},
+
  {h:"When you are done",
-  p:["Hit <b>Connect Discord</b> at the bottom so your character follows you to any device.",
-     "Then <b>Submit for approval</b> in the Record tab, and ping an admin.",
-     "Reopen this any time with the <b>?</b> beside the theme buttons."]}
+  p:["Click the <b>Registry</b> Tab and hit <b>Connect Discord</b>, so you will never lose access to your character sheet, and submit your OC for Approval."]}
 ];
 var tutAt=0;
 function tutDraw(){
@@ -3197,6 +3348,7 @@ $("portraitPick").onclick=function(){
   Store.put(cur); Store.pref("current",cur.id);
   if(!canSave) $("notice").style.display="block";
   fill(); drawRoster(); drawLog(); render();
+  setTimeout(function(){ layOutTabs(); render(); }, 0);
 })();
 
 /* ============================================================
@@ -3715,13 +3867,13 @@ function renderAges(){
                  : "<span class='hint' style='margin:0'>Awaiting an admin.</span>")+
       "</div></div>";
     if(isAdmin()){
-      $("ageApprove").onclick=function(){
+      document.getElementById("ageApprove").onclick=function(){
         cur.age = cur.pendingAgeUp.newAge;
         cur.pendingAgeUp=null; cur.approval="";
         record("Age-up approved to "+cur.age,0,"");
         Store.put(cur); fill(); render(); renderAges();
       };
-      $("ageReject").onclick=function(){
+      document.getElementById("ageReject").onclick=function(){
         record("Age-up to "+cur.pendingAgeUp.newAge+" rejected",0,"");
         cur.pendingAgeUp=null; cur.approval="";
         Store.put(cur); renderAges();
