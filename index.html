@@ -434,6 +434,7 @@ h2{letter-spacing:.16em}
   </div>
   <div class="topbtns">
     <button id="tutBtn" title="How this works">?</button>
+    <button id="paperBtn" aria-pressed="true">Plain background</button>
     <button id="themeBtn" aria-pressed="false">Dark mode</button>
   </div>
 </header>
@@ -453,7 +454,7 @@ h2{letter-spacing:.16em}
 <div id="tabSheet" class="tabpanel">
 <div class="roster">
   <select id="rosterSel" aria-label="Choose character"></select>
-  <button id="newBtn">Create Character</button>
+  <button id="newBtn">New</button>
   <button id="dupBtn">Duplicate</button>
   <button id="delBtn">Delete</button>
   <button id="backBtn" style="display:none">Back to mine</button>
@@ -833,13 +834,11 @@ h2{letter-spacing:.16em}
   <p class="hint">Every character in the game. Open any sheet to read it — only the player who
     made it, or an admin, may change anything.</p>
   <div class="bar" style="margin-top:10px">
-    <button id="createCharacterBtn" class="primary">Create Character</button>
     <button id="browseBtn">Load the registry</button>
     <button id="purgeBtn" style="display:none">Sweep empty sheets</button>
     <input type="text" id="browseSearch" placeholder="Search name, house or player" style="flex:1 1 200px">
     <span class="rlen" id="browseCount"></span>
   </div>
-  <p class="hint" id="createCharacterHint" style="margin-top:8px"></p>
   <div id="browseList"></div>
 </section>
 
@@ -1681,7 +1680,6 @@ function drawRoster(){
 }
 function switchTo(c){ c._foreign=false; cur=c; Store.put(cur); Store.pref("current",cur.id);
   fill(); drawLog(); render(); drawRoster();
-  updateCreationGate();
   if(typeof renderAges==="function" && $("tabAges").classList.contains("active")) renderAges(); }
 /* Someone else's sheet: held in memory only, never written to your store. */
 function openForeign(c){
@@ -1689,63 +1687,10 @@ function openForeign(c){
   fill(); drawLog(); render();
   if(typeof renderAges==="function" && $("tabAges").classList.contains("active")) renderAges();
 }
-function ownedCharacterCount(){
-  var local = Store.all().filter(function(c){ return !c._foreign && !c._creationRequest; }).length;
-  return Math.max(local, (Cloud && Cloud.ready && Cloud.ownedCount) ? Cloud.ownedCount : 0);
-}
-function canCreateCharacter(){
-  if(!Cloud.ready){
-    if(ownedCharacterCount() >= 1){
-      alert("Your first character already exists. A second character must be approved before its sheet can be filled out.");
-      return false;
-    }
-    return true;
-  }
-  return true;
-}
-function updateCreationGate(){
-  var locked = !!cur.creationLocked && !isAdmin();
-  document.querySelectorAll("#tabSheet input,#tabSheet select,#tabSheet textarea,#tabSheet button").forEach(function(el){
-    if(["createCharacterBtn","browseBtn","purgeBtn","backBtn"].indexOf(el.id)>-1) return;
-    if(el.closest("#serverSection")) return;
-    el.disabled = locked;
-  });
-  $("newBtn").disabled = !locked && ownedCharacterCount() >= 1;
-  $("dupBtn").disabled = locked || ownedCharacterCount() >= 1;
-  var msg=$("createCharacterHint");
-  if(msg){
-    msg.textContent = locked
-      ? "This is a second character request. An admin must approve it before you can fill out the character sheet."
-      : (ownedCharacterCount() >= 1 ? "You may request another character, but the new sheet will remain locked until an admin approves it." : "Create your first character directly.");
-  }
-}
-$("createCharacterBtn").onclick=function(){
-  if(!Cloud.ready){
-    if(ownedCharacterCount()>=1){ alert("Connect to the server to request a second character for approval."); return; }
-    switchTo(blank()); $("f_name").focus(); return;
-  }
-  Cloud.sb.from("characters").select("id",{count:"exact",head:true}).eq("owner",Cloud.uid).then(function(r){
-    if(r.error){ alert("Could not check your character limit: "+r.error.message); return; }
-    var count = r.count || 0;
-    if(count >= 1){
-      var c=blank(); c.creationLocked=true; c.approval="creation"; c.submitted=false;
-      c.created=new Date().toISOString();
-      switchTo(c);
-      Cloud.push(c);
-      updateCreationGate();
-      cloudStatus("Second character request created — waiting for admin approval.","wait");
-      return;
-    }
-    switchTo(blank()); $("f_name").focus();
-  });
-};
 $("rosterSel").onchange = function(){
   var c=Store.read(PRE+"char."+this.value); if(c) switchTo(c); };
-$("newBtn").onclick = function(){
-  $("createCharacterBtn").click();
-};
+$("newBtn").onclick = function(){ switchTo(blank()); $("f_name").focus(); };
 $("dupBtn").onclick = function(){
-  if(ownedCharacterCount() >= 1){ $("createCharacterBtn").click(); return; }
   var c=JSON.parse(JSON.stringify(cur)); c.id=uid();
   c.name=(c.name||"Unnamed")+" (copy)"; c.created=new Date().toISOString();
   /* A copy has not been judged. Carrying approval across would let anyone
@@ -3378,12 +3323,16 @@ function setPaper(on){
   $("paperBtn").setAttribute("aria-pressed", on ? "true" : "false");
   Store.pref("paper", on ? 1 : 0);
 }
+$("paperBtn").onclick=function(){
+  setPaper(document.documentElement.classList.contains("noPaper"));
+};
 $("portraitPick").onclick=function(){
   if(denied()) return; $("portraitFile").click(); };
 
 (function(){
-  setPaper(false);
-   var pref=Store.pref("theme");
+  var pp=Store.pref("paper");
+  setPaper(pp===null || pp===undefined ? true : !!pp);
+  var pref=Store.pref("theme");
   setTheme(pref || (window.matchMedia &&
     window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark":"light"));
   var id=Store.pref("current"), found=id?Store.read(PRE+"char."+id):null;
@@ -3399,7 +3348,6 @@ $("portraitPick").onclick=function(){
   Store.put(cur); Store.pref("current",cur.id);
   if(!canSave) $("notice").style.display="block";
   fill(); drawRoster(); drawLog(); render();
-  updateCreationGate();
   setTimeout(function(){ layOutTabs(); render(); }, 0);
 })();
 
@@ -3411,7 +3359,7 @@ var SUPABASE_URL = "https://dxcgzvpxjixztrcylsla.supabase.co";
 var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4Y2d6dnB4aml4enRyY3lsc2xhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MTg2MTQsImV4cCI6MjEwMjQ5NDYxNH0.XFBYVHPxsryy9z3pYYSv_wFQI-cHNzD3Ab7nQgFtuHY";
 /* ============================================================ */
 
-var Cloud = { on:false, ready:false, uid:null, admin:false, sb:null, queue:[], ownedCount:0 };
+var Cloud = { on:false, ready:false, uid:null, admin:false, sb:null, queue:[] };
 
 function cloudStatus(msg, cls){
   var el = $("srvStatus"); if(!el) return;
@@ -3526,12 +3474,10 @@ Cloud.pull = function(){
   Cloud.sb.from("characters").select("id,sheet,claim_code,is_approved")
     .eq("owner", Cloud.uid).then(function(r){
       if(r.error || !r.data) return;
-      Cloud.ownedCount = r.data.length;
       var ids = [];
       r.data.forEach(function(row){
         var c = row.sheet; if(!c) return;
         c.id = row.id; c.claim_code = row.claim_code; c.is_approved = row.is_approved;
-        if(c.creationLocked && row.is_approved) c.creationLocked = false;
         c.prodigy = false;
         Store.write(PRE + "char." + c.id, c);
         ids.push(c.id);
@@ -3548,7 +3494,6 @@ Cloud.pull = function(){
         var keep = Store.read(PRE + "char." + (Store.pref("current")||"")) || Store.all()[0];
         if(keep){ cur = keep; fill(); drawLog(); render(); }
         drawRoster();
-        updateCreationGate();
       }
       cloudStatus("Connected — " + r.data.length + " character" +
         (r.data.length===1?"":"s") + " on the server." +
@@ -3779,18 +3724,11 @@ $("registry").addEventListener("click", function(e){
       });
   }
   if(appr){
-    Cloud.sb.from("characters").select("sheet").eq("id",appr).single().then(function(r){
-      if(r.error || !r.data || !r.data.sheet){ alert((r.error&&r.error.message)||"Could not open that character."); return; }
-      var sheet=r.data.sheet;
-      sheet.creationLocked=false;
-      sheet.approval="";
-      return Cloud.sb.from("characters").update({ is_approved:true, needs_approval:false, sheet:sheet }).eq("id",appr);
-    }).then(function(r){
-      if(r && r.error){ alert(r.error.message); return; }
+    Cloud.sb.from("characters").update({ is_approved:true }).eq("id",appr).then(function(r){
+      if(r.error){ alert(r.error.message); return; }
       Cloud.sb.from("character_log").insert({ character_id:appr, what:"Approved by an admin",
         delta:0, actor:Cloud.uid });
       $("registryBtn").click();
-      Cloud.pull();
     });
   }
 });
