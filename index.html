@@ -16,6 +16,7 @@
   --paper-opacity:.5;
   --paper-filter:saturate(.75) contrast(.95);
   --panel-alpha:rgba(251,245,233,.90);
+  --frame-color:#B8912F;
 }
 html[data-theme="dark"]{
   --paper:#1B1409; --panel:#241B0E; --box:#312512;
@@ -156,17 +157,32 @@ html[data-theme="dark"] .ico{filter:brightness(1.08)}
   background:var(--box);color:var(--ink-2)}
 #knightRoll .stat .name{padding-left:2px}
 .topbtns{display:flex;gap:6px;flex-wrap:wrap}
+.colorPanel{border:1px solid var(--rule);background:var(--panel);padding:10px 12px;
+  margin-top:8px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;
+  font-family:system-ui,sans-serif}
+.colorRow{display:flex;align-items:center;gap:7px}
+.colorRow label{margin:0;font-size:11px}
+.colorRow input[type=color]{width:36px;height:32px;padding:2px;cursor:pointer}
+.hexIn{width:90px;font-family:ui-monospace,Consolas,monospace;text-transform:uppercase}
 html.noPaper body::before{display:none}
 .logo{display:block;max-width:330px;width:60vw;height:auto;margin-bottom:10px}
 html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
 .face{display:flex;gap:14px;margin-top:16px;flex-wrap:wrap}
-.facebox{width:150px;height:210px;flex:none;position:relative;background:none;border:0;
+.facebox{width:150px;height:210px;flex:none;position:relative;border:0;
   display:flex;align-items:center;justify-content:center;
-  background-image:var(--frame-img);background-size:100% 100%;background-repeat:no-repeat;
-  filter:drop-shadow(0 3px 6px rgba(0,0,0,.28))}
-html[data-theme="dark"] .facebox{filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)) brightness(.86)}
-.facebox img{position:absolute;top:15px;left:15px;right:15px;bottom:15px;
-  width:calc(100% - 30px);height:calc(100% - 30px);object-fit:cover;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--frame-color) 60%,white),
+    var(--frame-color) 45%,color-mix(in srgb,var(--frame-color) 70%,black));
+  box-shadow:inset 0 0 0 2px rgba(0,0,0,.35),
+    inset 0 0 0 5px color-mix(in srgb,var(--frame-color) 55%,white),
+    inset 0 0 0 6px rgba(0,0,0,.3),
+    0 3px 6px rgba(0,0,0,.28);
+  padding:12px}
+html[data-theme="dark"] .facebox{box-shadow:inset 0 0 0 2px rgba(0,0,0,.5),
+    inset 0 0 0 5px color-mix(in srgb,var(--frame-color) 55%,white),
+    inset 0 0 0 6px rgba(0,0,0,.45),
+    0 3px 6px rgba(0,0,0,.6)}
+.facebox img{position:absolute;top:13px;left:13px;right:13px;bottom:13px;
+  width:calc(100% - 26px);height:calc(100% - 26px);object-fit:cover;
   filter:sepia(.16) contrast(1.02)}
 .facebox span{position:relative;font-size:11px;color:#6b5a3e;letter-spacing:.14em;
   text-transform:uppercase;font-family:system-ui,sans-serif}
@@ -434,10 +450,27 @@ h2{letter-spacing:.16em}
   </div>
   <div class="topbtns">
     <button id="tutBtn" title="How this works">?</button>
-    <button id="paperBtn" aria-pressed="true">Plain background</button>
+    <button id="colorBtn" aria-expanded="false">Colors</button>
+    <button id="createCharBtn">Create Character</button>
     <button id="themeBtn" aria-pressed="false">Dark mode</button>
   </div>
 </header>
+
+<div id="colorPanel" class="colorPanel" style="display:none">
+  <div class="colorRow">
+    <label for="bgColorPick">Background color</label>
+    <input type="color" id="bgColorPick">
+    <input type="text" id="bgColorHex" class="hexIn" maxlength="7" placeholder="#F4EBDC">
+  </div>
+  <div class="colorRow">
+    <label for="frameColorPick">Frame color</label>
+    <input type="color" id="frameColorPick">
+    <input type="text" id="frameColorHex" class="hexIn" maxlength="7" placeholder="#B8912F">
+  </div>
+  <div class="colorRow">
+    <button id="colorResetBtn" type="button">Reset to default</button>
+  </div>
+</div>
 
 <div class="arms" id="armsBox" style="display:none"></div>
 <p class="viewbar" id="viewBar" style="display:none"></p>
@@ -1507,10 +1540,20 @@ function $(id){ return document.getElementById(id); }
    Server-side row level security enforces the same rule, so editing
    the page in a console gains nobody anything. */
 function isAdmin(){ return !!(window.Cloud && Cloud.admin); }
-function editable(){ return !cur._foreign || isAdmin(); }
+/* A second (or later) character on the same account starts locked —
+   nothing can be typed into it — until an admin approves it. */
+function lockedSecond(){ return !!(cur.pendingSecond && !cur.is_approved); }
+function editable(){
+  if(isAdmin()) return true;
+  if(cur._foreign) return false;
+  if(lockedSecond()) return false;
+  return true;
+}
 function denied(){
   if(editable()) return false;
-  flash("That sheet belongs to another player.");
+  flash(lockedSecond()
+    ? "This is an extra character on your account — an admin has to approve it before you can fill it out."
+    : "That sheet belongs to another player.");
   return true;
 }
 var flashTimer;
@@ -1689,7 +1732,21 @@ function openForeign(c){
 }
 $("rosterSel").onchange = function(){
   var c=Store.read(PRE+"char."+this.value); if(c) switchTo(c); };
-$("newBtn").onclick = function(){ switchTo(blank()); $("f_name").focus(); };
+/* Create a character, gated: an account may freely make its first OC,
+   but a second (or later) one is created locked and needs an admin's
+   approval, via the roster's "waiting" flag, before it can be edited. */
+function newCharGated(){
+  var c = blank();
+  if(!isAdmin() && Store.all().length>=1){
+    c.pendingSecond = true;
+    c.approval = "Second character on this account — awaiting admin approval before it can be filled out";
+  }
+  switchTo(c);
+  $("f_name").focus();
+  if(c.pendingSecond) flash("Created and sent for approval. It will unlock once an admin approves it.");
+}
+$("newBtn").onclick = newCharGated;
+$("createCharBtn").onclick = newCharGated;
 $("dupBtn").onclick = function(){
   var c=JSON.parse(JSON.stringify(cur)); c.id=uid();
   c.name=(c.name||"Unnamed")+" (copy)"; c.created=new Date().toISOString();
@@ -3316,22 +3373,45 @@ if(!Store.pref("seenTut")) setTimeout(tutOpen,600);
 
 $("logoImg").src = LOGO;
 document.documentElement.style.setProperty("--paper-img","url("+ART.paper+")");
-document.documentElement.style.setProperty("--frame-img","url("+ART.frame+")");
-function setPaper(on){
-  document.documentElement.classList.toggle("noPaper", !on);
-  $("paperBtn").textContent = on ? "Plain background" : "Parchment";
-  $("paperBtn").setAttribute("aria-pressed", on ? "true" : "false");
-  Store.pref("paper", on ? 1 : 0);
+/* Background is always plain now — no parchment toggle. */
+document.documentElement.classList.add("noPaper");
+
+/* ---- custom colors: background + frame, via color wheel or hex ---- */
+var DEFAULT_BG = "#F4EBDC", DEFAULT_FRAME = "#B8912F";
+function hexOk(s){ return /^#[0-9a-fA-F]{6}$/.test(s||""); }
+function applyBg(hex){
+  document.documentElement.style.setProperty("--paper", hex);
+  $("bgColorPick").value = hex; $("bgColorHex").value = hex;
+  Store.pref("bgColor", hex);
 }
-$("paperBtn").onclick=function(){
-  setPaper(document.documentElement.classList.contains("noPaper"));
+function applyFrame(hex){
+  document.documentElement.style.setProperty("--frame-color", hex);
+  $("frameColorPick").value = hex; $("frameColorHex").value = hex;
+  Store.pref("frameColor", hex);
+}
+$("bgColorPick").oninput = function(){ applyBg(this.value); };
+$("frameColorPick").oninput = function(){ applyFrame(this.value); };
+$("bgColorHex").addEventListener("change", function(){
+  var v = this.value.trim(); if(v[0]!=="#") v="#"+v;
+  if(hexOk(v)) applyBg(v); else this.value = Store.pref("bgColor")||DEFAULT_BG;
+});
+$("frameColorHex").addEventListener("change", function(){
+  var v = this.value.trim(); if(v[0]!=="#") v="#"+v;
+  if(hexOk(v)) applyFrame(v); else this.value = Store.pref("frameColor")||DEFAULT_FRAME;
+});
+$("colorResetBtn").onclick = function(){ applyBg(DEFAULT_BG); applyFrame(DEFAULT_FRAME); };
+$("colorBtn").onclick = function(){
+  var open = $("colorPanel").style.display !== "none";
+  $("colorPanel").style.display = open ? "none" : "";
+  $("colorBtn").setAttribute("aria-expanded", open ? "false" : "true");
 };
+applyBg(Store.pref("bgColor") || DEFAULT_BG);
+applyFrame(Store.pref("frameColor") || DEFAULT_FRAME);
+
 $("portraitPick").onclick=function(){
   if(denied()) return; $("portraitFile").click(); };
 
 (function(){
-  var pp=Store.pref("paper");
-  setPaper(pp===null || pp===undefined ? true : !!pp);
   var pref=Store.pref("theme");
   setTheme(pref || (window.matchMedia &&
     window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark":"light"));
@@ -3411,6 +3491,7 @@ Cloud.start = function(){
 /* Send one character up. Called after every local save. */
 function worthSaving(c){
   if(!c) return false;
+  if(c.pendingSecond) return true;
   if((c.name||"").trim()) return true;
   var spentAny = false;
   try { spentAny = STATS.some(function(s){ return (c.scores||{})[s.key] > 0; }); } catch(e){}
