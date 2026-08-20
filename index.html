@@ -7,23 +7,26 @@
 <title>Character Sheet — 90 AC</title>
 <style>
 :root{
-  --paper:#fbfaf7; --panel:#fff; --box:#f2f0eb;
-  --ink:#141414; --ink-2:#585858; --ink-3:#8d8d8d;
-  --rule:#c9c6bf; --rule-2:#e4e1da;
-  --fill:#2e2e2e; --empty:#dedbd4; --capped:#eeece6;
-  --alert:#8c2b22; --flag:#8a6a12;
-  --web:#dedbd4; --web-out:#a9a59d; --spoke:#e8e5de; --shade:rgba(46,46,46,.13);
+  --paper:#F4EBDC; --panel:#FBF5E9; --box:#EADCC4;
+  --ink:#2A1D10; --ink-2:#6B563C; --ink-3:#9A836A;
+  --rule:#C4A87E; --rule-2:#E2D2B4;
+  --fill:#7A5A2A; --empty:#E2D2B4; --capped:#EFE5D2;
+  --alert:#8C2B22; --flag:#A87524;
+  --web:#E2D2B4; --web-out:#BFA377; --spoke:#EADCC4; --shade:rgba(122,90,42,.16);
+  --paper-opacity:.5;
+  --paper-filter:saturate(.75) contrast(.95);
+  --panel-alpha:rgba(251,245,233,.90);
 }
 html[data-theme="dark"]{
-  --paper:#15171a; --panel:#1c1f23; --box:#23272c;
-  --ink:#e7e5e0; --ink-2:#a3a099; --ink-3:#75726c;
-  --rule:#3a3f45; --rule-2:#2a2e33;
-  --fill:#d8d5ce; --empty:#2e3339; --capped:#22262b;
-  --alert:#d8776b; --flag:#c9a53f;
-  --web:#2c3137; --web-out:#4a5058; --spoke:#24282d; --shade:rgba(216,213,206,.13);
-  --paper-opacity:.10;
-  --paper-filter:saturate(.3) brightness(.42) contrast(1.1);
-  --panel-alpha:rgba(28,31,35,.90);
+  --paper:#1B1409; --panel:#241B0E; --box:#312512;
+  --ink:#F0E3CB; --ink-2:#C0A87F; --ink-3:#8E7A58;
+  --rule:#4E3C1F; --rule-2:#33270F;
+  --fill:#C9A24A; --empty:#33270F; --capped:#291F0C;
+  --alert:#D8776B; --flag:#E0B85A;
+  --web:#33270F; --web-out:#5E4A24; --spoke:#2A2010; --shade:rgba(201,162,74,.18);
+  --paper-opacity:.14;
+  --paper-filter:saturate(.6) brightness(.5) contrast(1.05);
+  --panel-alpha:rgba(36,27,14,.92);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 /* The parchment sits behind the page, never under the text itself.
@@ -322,6 +325,31 @@ html.housed button:hover:not(:disabled){border-color:var(--accent);color:var(--a
 html.housed input:focus,html.housed select:focus,html.housed textarea:focus{
   outline-color:var(--accent)}
 html.housed .ageTabBtn.cur{border-color:var(--accent);color:var(--accent)}
+.tutwrap{position:fixed;inset:0;z-index:200;background:rgba(28,18,6,.62);
+  display:flex;align-items:center;justify-content:center;padding:18px}
+.tut{background:var(--panel);border:1px solid var(--rule);max-width:560px;width:100%;
+  padding:26px 26px 18px;position:relative;box-shadow:0 18px 50px rgba(0,0,0,.4);
+  max-height:88vh;overflow:auto}
+.tut h3{font-family:Georgia,serif;font-size:23px;color:var(--flag);margin-bottom:12px}
+.tut p{font-size:15px;line-height:1.6;margin-bottom:11px;color:var(--ink)}
+.tutx{position:absolute;top:8px;right:8px;border:0;background:none;font-size:24px;
+  line-height:1;padding:4px 9px;min-height:0;color:var(--ink-3)}
+.tutfoot{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-top:16px;border-top:1px solid var(--rule-2);padding-top:14px}
+.tutdots{display:flex;gap:5px}
+.tutdots .dot{width:7px;height:7px;border-radius:50%;background:var(--rule)}
+.tutdots .dot.on{background:var(--flag)}
+button.primary{background:var(--flag);border-color:var(--flag);color:#241900;font-weight:700}
+#tutBtn{width:34px;padding:0;font-weight:700}
+.statusbox{font-size:13.5px;padding:9px 12px;border-left:4px solid var(--rule);
+  background:var(--box);font-family:system-ui,sans-serif}
+.statusbox.ok{border-left-color:#3f7d4a}
+.statusbox.wait{border-left-color:var(--flag)}
+.statusbox.dead{border-left-color:var(--alert);color:var(--alert)}
+/* quieter page: hints recede, headings breathe */
+.hint{font-size:12px;line-height:1.5;opacity:.88}
+section{margin-top:22px}
+h2{letter-spacing:.16em}
 @media (max-width:520px){.arms .shield{width:54px;height:60px}.arms .shield img{width:34px}}
 @media (max-width:520px){.arms .shield{width:52px;height:58px}.arms .shield svg{width:32px;height:32px}}
 @media (max-width:520px){
@@ -363,6 +391,21 @@ html.housed .ageTabBtn.cur{border-color:var(--accent);color:var(--accent)}
 </style>
 </head>
 <body>
+
+<div class="tutwrap" id="tutWrap" style="display:none">
+  <div class="tut">
+    <button class="tutx" id="tutClose" aria-label="Close">&times;</button>
+    <div id="tutBody"></div>
+    <div class="tutfoot">
+      <div class="tutdots" id="tutDots"></div>
+      <div class="bar" style="margin:0">
+        <button id="tutPrev">Back</button>
+        <button id="tutNext" class="primary">Next</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="page" id="page">
 
 <header>
@@ -372,6 +415,7 @@ html.housed .ageTabBtn.cur{border-color:var(--accent);color:var(--accent)}
     <p class="rule-note">Thirteen attributes · 1–40 scale · points by age · the year is 90 AC</p>
   </div>
   <div class="topbtns">
+    <button id="tutBtn" title="How this works">?</button>
     <button id="paperBtn" aria-pressed="true">Plain background</button>
     <button id="themeBtn" aria-pressed="false">Dark mode</button>
   </div>
@@ -404,7 +448,7 @@ html.housed .ageTabBtn.cur{border-color:var(--accent);color:var(--accent)}
     <div class="wide"><label for="f_station">Station</label><select id="f_station" data-f="station"></select></div>
     <div class="wide"><label for="f_house">House or surname</label>
       <input id="f_house" data-f="house" list="houseList" autocomplete="off" placeholder="Start typing…"></div>
-    <div><label for="f_age">Age</label><input id="f_age" data-f="age" type="number" min="9" max="90" inputmode="numeric"></div>
+    <div><label for="f_age">Age</label><input id="f_age" data-f="age" type="number" min="6" max="90" inputmode="numeric"></div>
     <div><label for="f_gender">Gender</label><input id="f_gender" data-f="gender" autocomplete="off"></div>
     <div><label for="f_height">Height</label><input id="f_height" data-f="height" placeholder="5'9&quot;" autocomplete="off"></div>
     <div><label for="f_weight">Weight</label><input id="f_weight" data-f="weight" placeholder="165 lbs" autocomplete="off"></div>
@@ -655,7 +699,7 @@ html.housed .ageTabBtn.cur{border-color:var(--accent);color:var(--accent)}
     <div id="commandBox" style="display:none">
       <div class="traithead">
         <label for="commandPick">Battlefield traits</label>
-        <span class="tcount" id="commandCount">0 of 2</span>
+        <span class="tcount" id="commandCount">0 of 1</span>
       </div>
       <select id="commandPick"></select>
       <div class="traitlist" id="commandList"></div>
@@ -688,6 +732,15 @@ html.housed .ageTabBtn.cur{border-color:var(--accent);color:var(--accent)}
     <input id="f_buildOverride" data-f="buildOverride" autocomplete="off" placeholder="Leave blank to use the computed build">
   </div>
   <p class="reading" id="reading"></p>
+  <div class="statusbox" id="statusBox"></div>
+  <div class="bar" style="margin-top:12px">
+    <button id="submitBtn">Submit for approval</button>
+    <span id="adminJudge" style="display:none">
+      <button id="approveBtn">Approve</button>
+      <button id="rejectBtn">Send back</button>
+      <button id="deadBtn">Mark dead</button>
+    </span>
+  </div>
   <div class="bar" style="margin-top:12px">
     <button id="readingCopy">Copy build summary</button>
     <span class="rlen" id="readingLen"></span>
@@ -977,7 +1030,7 @@ var DETAIL = {
 };
 
 /* Age of the setting. Change YEAR and everything follows. */
-var YEAR = 90, MIN_AGE = 9, MAX_AGE = 90;
+var YEAR = 90, MIN_AGE = 6, MAX_AGE = 90;
 
 /* Houses that do not fit the year. Admins may still allow them. */
 var LATE = {
@@ -1169,7 +1222,7 @@ var COMMAND_TRAITS = [
   text:"you command from the back of a dragon, and the field rearranges itself around that fact"}
 ];
 var CMAP={}; COMMAND_TRAITS.forEach(function(t){ CMAP[t.id]=t; });
-var COMMAND_LIMIT = 2;
+var COMMAND_LIMIT = 1;
 
 /* ============================================================
    HERITAGE — the blood a character was born with.
@@ -1313,18 +1366,7 @@ function dragonBand(v){
    THE PROPHECY — a hidden combination. Nobody is told it exists.
    Every clue the songs give, all at once, in one person.
    ============================================================ */
-var PROMISED = {
-  name:"The Prince That Was Promised",
-  /* Height between the three claimants, in inches. Young Griff, the
-     Dragon Queen and the Snow are all famously unremarkable in stature. */
-  minHeight:66, maxHeight:70,
-  minWeight:140, maxWeight:175,
-  need:{ beauty:26, leadership:25, awareness:20, martial:16 },
-  text:"Blood of the dragon, of a stature no singer would bother recording, "+
-       "beautiful in the Valyrian way, followed by men and quick to notice things. "+
-       "A dragon answers to this one. Every sign the songs ever named, in one person. "+
-       "So did three others, mind, and the prophecy has never once been read the same way twice."
-};
+/* The prophecy's conditions live in the database. */
 /* Heights are written by hand, so read whatever the player typed. */
 function heightInches(s){
   s=String(s||"").trim(); if(!s) return null;
@@ -1431,6 +1473,7 @@ var LINEAGE = ["father","mother","spouse","liege"];
    even then only as far as Hale. */
 var PHYSICAL = { martial:1, athletics:1, archery:1 };
 var YOUTH_CAPS = [
+  { upto:8,  cap:8,  anomaly:12, label:"small child" },
   { upto:12, cap:16, anomaly:24, label:"child" },
   { upto:15, cap:24, anomaly:32, label:"youth" },
   { upto:17, cap:32, anomaly:36, label:"almost grown" }
@@ -1492,7 +1535,7 @@ function blank(){
   var c = { id:uid(), v:4, year:YEAR, awarded:0, base:BASE, approval:"", scores:{}, log:[],
             knight:{}, knightAwarded:0, knightOverall:36, knightCap:KNIGHT_CAP, prodigy:false,
             portrait:"", appearance:"", traits:[], command:[],
-            heritage:"", body:"", injuries:[],
+            heritage:"", body:"", injuries:[], submitted:false, isDead:false, deathNote:"",
             dragon:0, hasDragon:false,
             valyrian:false, anomaly:false, lineageLocked:false,
             created:new Date().toISOString() };
@@ -1530,6 +1573,12 @@ $("themeBtn").onclick = function(){
 function lookupHouse(raw){
   var k=String(raw||"").toLowerCase().replace(/^house\s+/,"").trim();
   return HMAP[k]||null;
+}
+var HOUSE_FILLED=["words","region","seat","sigil"];
+function clearHouseFill(){
+  HOUSE_FILLED.forEach(function(f){
+    cur[f]=""; var el=$("f_"+f); if(el) el.value="";
+  });
 }
 function applyHouse(force){
   var h = lookupHouse(cur.house);
@@ -1590,6 +1639,7 @@ function label(c){
   if(c.age) t.push("age " + c.age);
   if(c.station && c.station !== "Noble house") t.push(c.station.toLowerCase());
   if(c.player) t.push(c.player);
+  if(c.isDead) s = "\u2020 " + s;
   return s + (t.length ? " — " + t.join(", ") : "");
 }
 function drawRoster(){
@@ -1904,7 +1954,7 @@ FIELDS.forEach(function(f){
     describe(); render(); $("sheet").textContent=sheetText(); drawRoster();
   });
 });
-$("f_house").addEventListener("change",function(){ applyHouse(true); Store.put(cur);
+$("f_house").addEventListener("change",function(){ clearHouseFill(); applyHouse(true); Store.put(cur);
   fill(); describe(); $("sheet").textContent=sheetText(); });
 
 $("f_appearance").addEventListener("input",function(){
@@ -2003,7 +2053,7 @@ function render(){
   $("page").className="page"+(over?" over":"");
   drawComposition("compBar","compList",STATS,function(k){ return total(k); });
   renderArms(); renderTraits(); renderHeritage(); renderYouthNote(); renderBonusNote();
-  renderKnight(); renderDragon(); renderPromised(); renderLock(); renderMode();
+  renderKnight(); renderDragon(); renderPromised(); renderStatus(); renderLock(); renderMode();
   renderReading();
   renderBuildBadge();
   $("sheet").textContent=sheetText();
@@ -2309,7 +2359,7 @@ $("commandPick").addEventListener("change",function(){
           "Set the house, or have an admin mark the descent."); return;
   }
   if(cur.command.length>=COMMAND_LIMIT){
-    alert(COMMAND_LIMIT+" battlefield traits is the limit. Remove one first."); return;
+    alert("A commander is known for one thing. Remove the other first."); return;
   }
   cur.command.push(id);
   record("Battlefield trait taken — "+t.name, 0, t.restricted?"awaiting approval":"");
@@ -2602,117 +2652,48 @@ function K(k){ return knightTotal(k); }
 function C(k){ return total(k); }
 function anyInjury(){ return injuryList().length > 0; }
 
-var HIDDEN = [
- { id:"promised", name:"The Prince That Was Promised",
-   test:function(){
-     if(!dragonOpen()) return false;
-     var h=heightInches(cur.height), w=weightPounds(cur.weight);
-     if(h===null||h<PROMISED.minHeight||h>PROMISED.maxHeight) return false;
-     if(w===null||w<PROMISED.minWeight||w>PROMISED.maxWeight) return false;
-     return C("beauty")>=26 && C("leadership")>=25 && C("awareness")>=20 && C("martial")>=16;
-   },
-   text:"Blood of the dragon, of a stature no singer would bother recording, beautiful in the "+
-        "Valyrian way, followed by men and quick to notice things. A dragon answers to this one. "+
-        "Every sign the songs ever named, in one person. So did three others, mind, and the "+
-        "prophecy has never once been read the same way twice." },
-
- { id:"sword_saint", name:"The Sword Saint",
-   test:function(){
-     var cap=knightCap();
-     return knightUnlocked() && K("skill")>=cap && K("defense")>=cap && K("strength")>=30 &&
-            knightRating()>=99 && C("martial")>=MAX && C("archery")===0;
-   },
-   text:"Perfect offence and perfect defence in the same hand, and not one arrow ever loosed. "+
-        "Others reach for a bow when the distance is wrong. This one simply closes it. The title "+
-        "is not granted, not inherited, and not shared — it is what the realm calls whoever is "+
-        "currently the best blade alive." },
-
- { id:"bat_harrenhal", name:"The Bat of Harrenhal",
-   test:function(){
-     return C("awareness")>=32 && C("stewardship")>=22 && C("intrigue")>=22 &&
-            C("deception")>=18 && C("martial")>=16 && C("archery")<=5;
-   },
-   text:"Fabulously rich, awake at hours no lord keeps, and trained past any reasonable need. "+
-        "Nobody has ever seen the face doing it. Nine bats on the banner and not one of them "+
-        "flies by daylight." },
-
- { id:"the_board", name:"The Player Behind the Board",
-   test:function(){
-     return C("intelligence")>=MAX && C("intrigue")>=38 && C("deception")>=30 &&
-            C("martial")<=5 && C("athletics")<=10;
-   },
-   text:"Has never held a sword and has never needed one. Every death in the last five years "+
-        "was somebody else's hand, somebody else's reason, and somebody else's blame. The pieces "+
-        "move themselves once you have set the board properly." },
-
- { id:"bored_fist", name:"The Bored Fist",
-   test:function(){
-     var others=["skill","riding","resolve","camaraderie"];
-     var low=others.every(function(k){ return K(k)<=5; });
-     return knightUnlocked() && K("strength")>=knightCap() && low &&
-            C("martial")>=28 && C("beauty")<=10;
-   },
-   text:"One blow. It has always been one blow. No guard worth the name, no horsemanship, no "+
-        "technique at all — and no opponent has ever required a second. The dreadful part is "+
-        "that it has stopped being interesting." },
-
- { id:"physician", name:"The Wandering Physician",
-   test:function(){
-     return C("medicine")>=MAX && C("knowledge")>=28 && C("martial")<=10 && C("stewardship")<=10;
-   },
-   text:"Will open anyone, for anyone, and has never once named a price worth paying. No chain, "+
-        "no citadel, no lord's licence. Half the maesters call it butchery. The other half send "+
-        "for this one when their own methods fail." },
-
- { id:"long_shot", name:"The Long Shot",
-   test:function(){
-     return C("archery")>=38 && C("awareness")>=32 && C("athletics")>=28 && C("martial")<=15;
-   },
-   text:"Cannot hold a line, cannot hold a sword, and does not need to. Whatever is worth hitting "+
-        "is already dead before the range closes. Every count of arrows loosed is also a count "+
-        "of men down." },
-
- { id:"silver_crown", name:"The Silver Crown",
-   test:function(){
-     return C("charisma")>=38 && C("leadership")>=38 && C("knowledge")<=10 && C("intrigue")<=15;
-   },
-   text:"Cannot read a treaty, cannot follow a ledger, and could not scheme a way out of a sack. "+
-        "Men die for this one anyway, cheerfully, in numbers, having decided so themselves. "+
-        "It turns out that was always the only qualification." },
-
- { id:"beast_slayer", name:"The Beast-Slayer",
-   test:function(){
-     return C("martial")>=28 && C("medicine")>=28 && C("knowledge")>=22 &&
-            C("awareness")>=26 && C("beauty")<=15 && anyInjury();
-   },
-   text:"Kills things for coin, then stitches itself back together in a barn. Knows the anatomy "+
-        "of everything it hunts and the price of everything it kills. Nobody wants it in the "+
-        "village. Everybody sends for it." },
-
- { id:"unseen", name:"The Unseen",
-   test:function(){
-     return C("deception")>=38 && C("awareness")>=30 && C("athletics")>=22 &&
-            C("martial")>=15 && C("charisma")<=10;
-   },
-   text:"No face anyone can describe and no name anyone agrees on. Goes where it likes, over "+
-        "rooftops and through households, and leaves nothing behind but a body and a question. "+
-        "Deeply unremarkable in conversation, which is rather the point." }
-];
-
-function hiddenFound(){
-  return HIDDEN.filter(function(t){
-    try { return t.test(); } catch(e){ return false; }
-  });
+/* The conditions for these live in the database, not here. Reading this
+   page tells you nothing about what they are. */
+var TITLES = { key:null, list:[], timer:null };
+function titleFacts(){
+  var f = { core:{}, knight:{}, house:cur.house||"", station:cur.station||"",
+            heritage:cur.heritage||"", age:ageNum(), height:cur.height||"",
+            weight:cur.weight||"", heightIn:heightInches(cur.height),
+            weightLb:weightPounds(cur.weight),
+            dragon:!!dragonOpen(), valyrian:!!isValyrian(),
+            injuries:(cur.injuries||[]).length, knighted:!!knightUnlocked(),
+            rating:knightRating(), cap:knightCap() };
+  STATS.forEach(function(s){ f.core[s.key]=total(s.key); });
+  KNIGHT.forEach(function(s){ f.knight[s.key]=knightTotal(s.key); });
+  return f;
 }
-function renderPromised(){
-  var found=hiddenFound(), box=$("promisedWrap");
+function refreshTitles(){
+  if(!(window.Cloud && Cloud.ready)) return;
+  var f=titleFacts(), k=JSON.stringify(f);
+  if(k===TITLES.key) return;
+  TITLES.key=k;
+  clearTimeout(TITLES.timer);
+  TITLES.timer=setTimeout(function(){
+    Cloud.sb.rpc("check_titles",{ c:f }).then(function(r){
+      if(r.error){ return; }
+      TITLES.list = r.data || [];
+      drawTitles();
+    });
+  }, 350);
+}
+function hiddenFound(){ return TITLES.list; }
+function drawTitles(){
+  var found=TITLES.list, box=$("promisedWrap");
+  if(!box) return;
   box.style.display = found.length ? "" : "none";
   if(!found.length) return;
   box.innerHTML = found.map(function(t){
-    return '<div class="promised"><b>'+esc(t.name)+'</b><p>'+esc(t.text)+'</p></div>';
+    return '<div class="promised"><b>'+esc(t.name)+'</b><p>'+esc(t.blurb||"")+'</p></div>';
   }).join("") + '<p class="foundcount">'+found.length+
     ' hidden title'+(found.length===1?'':'s')+' found.</p>';
 }
+function renderPromised(){ refreshTitles(); drawTitles(); }
+
 
 /* ---------------- whose sheet is this ---------------- */
 function renderMode(){
@@ -3027,6 +3008,57 @@ function renderReading(){
   $("reading").textContent = t;
   $("readingLen").textContent = t.length + " characters";
 }
+function statusOf(){
+  if(cur.isDead) return {k:"dead", t:"Dead"+(cur.deathNote?" — "+cur.deathNote:"")};
+  if(cur.is_approved) return {k:"ok", t:"Approved by an admin"};
+  if(cur.submitted) return {k:"wait", t:"Submitted — waiting on an admin"};
+  return {k:"draft", t:"Draft. Not yet submitted."};
+}
+function renderStatus(){
+  var st=statusOf(), b=$("statusBox");
+  b.className="statusbox "+st.k;
+  b.textContent=st.t;
+  $("submitBtn").style.display = (cur._foreign||cur.is_approved||cur.submitted) ? "none" : "";
+  $("adminJudge").style.display = isAdmin() ? "" : "none";
+  $("deadBtn").textContent = cur.isDead ? "Mark living" : "Mark dead";
+}
+$("submitBtn").onclick=function(){
+  if(denied()) return;
+  if(!(cur.name||"").trim()){ flash("Give them a name first."); return; }
+  if(left()>0 && !confirm(left()+" points are still unspent. Submit anyway?")) return;
+  cur.submitted=true;
+  record("Submitted for approval",0,"");
+  render();
+};
+$("approveBtn").onclick=function(){
+  if(!isAdmin()) return;
+  cur.is_approved=true; cur.submitted=false;
+  if(Cloud.ready) Cloud.sb.from("characters").update({is_approved:true}).eq("id",cur.id)
+    .then(function(){ });
+  record("Approved by an admin",0,"");
+  render();
+};
+$("rejectBtn").onclick=function(){
+  if(!isAdmin()) return;
+  var why=prompt("What needs changing?")||"";
+  cur.submitted=false; cur.is_approved=false;
+  if(Cloud.ready) Cloud.sb.from("characters").update({is_approved:false}).eq("id",cur.id)
+    .then(function(){ });
+  record("Sent back by an admin",0,why);
+  render();
+};
+$("deadBtn").onclick=function(){
+  if(!isAdmin()) return;
+  if(!cur.isDead){
+    var how=prompt("How did they die?")||"";
+    cur.isDead=true; cur.deathNote=how;
+    record("Died",0,how);
+  } else { cur.isDead=false; cur.deathNote=""; record("Restored to the living",0,""); }
+  if(Cloud.ready) Cloud.sb.from("characters").update({is_dead:cur.isDead}).eq("id",cur.id)
+    .then(function(){ });
+  render();
+};
+
 $("readingCopy").onclick=function(){
   var t=readingText();
   if(navigator.clipboard) navigator.clipboard.writeText(t).catch(fb); else fb();
@@ -3080,6 +3112,56 @@ function fill(){
   drawPortrait();
   applyHouse(false); describe();
 }
+
+
+/* ---------------- the tutorial ---------------- */
+var TUT=[
+ {h:"Welcome to When Dragons War",
+  p:["This is your character sheet. It saves as you type. Nothing is final until an admin approves it.",
+     "About five minutes to make someone. You can change anything afterwards."]},
+ {h:"Who are they",
+  p:["Name, age, house. Type any house and its words, region, seat and sigil fill themselves — 463 of them are in here, and the page takes your house's colours.",
+     "Not everyone is a lord. Station covers bastards, hedge knights, smallfolk, maesters and the rest.",
+     "Your age decides your points: 39 under 16, 70 under 18, 115 after that."]},
+ {h:"Nobody is good at everything",
+  p:["115 points across thirteen attributes averages 8. That is the honest picture — most people are ordinary at most things.",
+     "A 20 is notable. A 30 makes you known for it. A 40 means songs.",
+     "Decide what your character <i>is</i> before spending. Two or three things they excel at, a few they manage, and some they are plainly bad at. The weaknesses matter as much as the strengths."]},
+ {h:"Shapes that work",
+  p:["<b>The specialist.</b> One attribute near the ceiling, the rest thin. Terrifying in their lane, useless outside it.",
+     "<b>The broad hand.</b> Nothing above 20, nothing below 8. Never the best in the room, always useful.",
+     "<b>The pair.</b> Two things high that reinforce each other — Intrigue and Deception, Martial and Athletics, Stewardship and Knowledge. Usually the strongest build.",
+     "The bar under your attributes tells you which you have made."]},
+ {h:"What you are given",
+  p:["Some things you do not pay for. Nobleborn get +5 Knowledge. Valyrian blood, +10 Beauty. Baratheon men, +6 Athletics.",
+     "Heritage, build and afflictions all move your numbers.",
+     "Traits give +5 and cost 3 elsewhere — and you cannot dodge that cost by dumping an attribute to nothing. Two traits into the same attribute pay less the second time."]},
+ {h:"Knights",
+  p:["Reach 16 Martial and a second sheet opens, with its own points across Strength, Defense, Skill, Riding, Resolve and Camaraderie.",
+     "Get two of them high together and you earn a build — the Duelist, the Iron Wall, the Heavy Cavalier. You do not pick these. They are earned by the numbers."]},
+ {h:"When you are done",
+  p:["Hit <b>Connect Discord</b> at the bottom so your character follows you to any device.",
+     "Then <b>Submit for approval</b> in the Record tab, and ping an admin.",
+     "Reopen this any time with the <b>?</b> beside the theme buttons."]}
+];
+var tutAt=0;
+function tutDraw(){
+  var c=TUT[tutAt];
+  $("tutBody").innerHTML="<h3>"+c.h+"</h3>"+c.p.map(function(x){ return "<p>"+x+"</p>"; }).join("");
+  $("tutDots").innerHTML=TUT.map(function(_,i){
+    return '<span class="dot'+(i===tutAt?" on":"")+'"></span>'; }).join("");
+  $("tutPrev").style.visibility = tutAt ? "" : "hidden";
+  $("tutNext").textContent = tutAt===TUT.length-1 ? "Begin" : "Next";
+}
+function tutOpen(){ tutAt=0; tutDraw(); $("tutWrap").style.display="flex"; }
+function tutShut(){ $("tutWrap").style.display="none"; Store.pref("seenTut",1); }
+$("tutBtn").onclick=tutOpen;
+$("tutClose").onclick=tutShut;
+$("tutPrev").onclick=function(){ if(tutAt){ tutAt--; tutDraw(); } };
+$("tutNext").onclick=function(){
+  if(tutAt===TUT.length-1) tutShut(); else { tutAt++; tutDraw(); } };
+$("tutWrap").addEventListener("click",function(e){ if(e.target===this) tutShut(); });
+if(!Store.pref("seenTut")) setTimeout(tutOpen,600);
 
 $("logoImg").src = LOGO;
 document.documentElement.style.setProperty("--paper-img","url("+ART.paper+")");
@@ -3384,7 +3466,8 @@ function drawBrowse(filter){
       .filter(Boolean).join(" · ");
     return "<tr><td><b>"+esc(c.name||"Unnamed")+"</b><br>"+
       "<span style='color:var(--ink-3)'>"+esc(sub)+"</span></td>"+
-      "<td>"+(c.is_approved?"approved":"")+"</td>"+
+      "<td>"+(c.is_dead?"<b>dead</b>":(c.is_approved?"approved":
+        (c.needs_approval?"<b style='color:var(--alert)'>waiting</b>":"draft")))+"</td>"+
       "<td><button data-view='"+c.id+"'>View</button>"+
       (Cloud.admin ? "<button data-del='"+c.id+"'>Delete</button>" : "")+
       "</td></tr>";
@@ -3395,7 +3478,7 @@ Cloud.browse = function(){
     "<p class='none'>The registry needs the server. Working offline.</p>"; return; }
   $("browseList").innerHTML="<p class='none'>Loading…</p>";
   Cloud.sb.from("characters")
-    .select("id,name,house,station,age,player,is_approved,updated_at")
+    .select("id,name,house,station,age,player,is_approved,is_dead,needs_approval,updated_at")
     .order("house",{ascending:true}).then(function(r){
       if(r.error){ $("browseList").innerHTML="<p class='none'>"+esc(r.error.message)+"</p>"; return; }
       browseCache=r.data||[];
