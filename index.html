@@ -397,8 +397,8 @@ body.sharedView .viewbar{margin-top:14px}
   letter-spacing:.02em;color:var(--ink)}
 .artHead p{color:var(--ink-2);font-style:italic;margin-top:4px;font-size:14.5px}
 
-.artBody{display:flex;gap:30px;flex-wrap:wrap-reverse;align-items:flex-start}
-.artProse{flex:1 1 380px;min-width:0;padding-top:4px}
+.artBody{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start}
+.artProse{flex:1 1 380px;min-width:0;padding-top:4px;order:1}
 .artProse h2{font-family:Georgia,serif;font-size:20px;font-weight:400;
   border-bottom:1px solid var(--rule);padding-bottom:5px;margin:22px 0 9px;color:var(--ink)}
 .artProse h2:first-child{margin-top:0}
@@ -407,7 +407,7 @@ body.sharedView .viewbar{margin-top:14px}
 /* the infobox itself — a bordered card with a coloured band, exactly the
    shape a wiki infobox takes, styled in the house's colours when known
    and the site's gold when not */
-.infobox{flex:0 0 268px;border:1px solid var(--accent-line,var(--rule));
+.infobox{flex:0 0 268px;order:2;border:1px solid var(--accent-line,var(--rule));
   background:var(--panel-alpha);box-shadow:0 2px 10px rgba(0,0,0,.12)}
 .infoBand{display:flex;align-items:center;gap:8px;padding:10px 10px 9px;
   background:var(--accent-soft,var(--box));border-bottom:1px solid var(--accent-line,var(--rule))}
@@ -432,9 +432,21 @@ body.sharedView .viewbar{margin-top:14px}
 .infobox tr:last-child th,.infobox tr:last-child td{border-bottom:0}
 .infobox small{color:var(--ink-3);font-style:italic}
 
-body.sharedView .page.hasArticle > header,body.sharedView .page.hasArticle > .tabbar,
-body.sharedView .page.hasArticle .roster,body.sharedView .page.hasArticle .topline{display:none}
-.page.hasArticle:not(body.sharedView .page){margin-bottom:24px}
+/* Article-only mode: the finished page and nothing else. Everything
+   used to build or judge a character lives behind the "Open full
+   editor" button, which only an admin ever sees. */
+/* !important is deliberate here: this must always beat .tabpanel.active,
+   regardless of which was written first or gets edited later. */
+.page.articleOnly > *{display:none !important}
+.page.articleOnly > #articleView{display:block !important}
+.page.articleOnly > #viewBar{display:flex !important}
+.viewbar{display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  border-left:4px solid var(--flag);background:var(--box);padding:12px 14px;margin-bottom:6px;
+  font-size:14px;font-family:system-ui,sans-serif;color:var(--ink-2)}
+.viewbar.admin{border-left-color:var(--alert)}
+.viewbar b{color:var(--ink)}
+.viewBarBtns{display:flex;gap:8px;flex:none}
+.viewBarBtns button{font-size:12.5px;padding:6px 12px;min-height:0}
 @media (max-width:640px){
   .artBody{flex-direction:column}
   .infobox{flex-basis:auto;width:100%;max-width:340px;margin:0 auto}
@@ -564,7 +576,13 @@ h2{letter-spacing:.16em}
 </header>
 
 <div class="arms" id="armsBox" style="display:none"></div>
-<p class="viewbar" id="viewBar" style="display:none"></p>
+<div class="viewbar" id="viewBar" style="display:none">
+  <span id="viewBarText"></span>
+  <span class="viewBarBtns">
+    <button id="backBtn2" style="display:none">Back to mine</button>
+    <button id="editToggleBtn" style="display:none">Open full editor</button>
+  </span>
+</div>
 <p class="denyflash" id="denyFlash" style="display:none"></p>
 
 <div class="topline">
@@ -585,7 +603,7 @@ h2{letter-spacing:.16em}
   <button id="newBtn">New</button>
   <button id="dupBtn">Duplicate</button>
   <button id="delBtn">Delete</button>
-  <button id="backBtn" style="display:none">Back to mine</button>
+  <button id="backBtn" style="display:none">Back to mine</button><!-- superseded by backBtn2 -->
 </div>
 
 <section>
@@ -3207,23 +3225,38 @@ function renderArticle(){
     : "<p class='hint'>Nothing written yet.</p>";
 }
 
+/* Whoever else's character this is, the default is the finished page —
+   the boxes and dropdowns underneath are how an OC gets built, not how
+   it gets read. An admin may step behind the curtain on purpose; a
+   visitor never sees it at all. */
+var peekEdit = false;
 function renderMode(){
   var foreign = !!cur._foreign, ro = foreign && !isAdmin();
+  var editing = foreign && isAdmin() && peekEdit;
+  var articleOnly = foreign && !editing;
+
   $("page").classList.toggle("viewonly", ro);
+  $("page").classList.toggle("articleOnly", articleOnly);
+
   var bar=$("viewBar");
   bar.style.display = foreign ? "" : "none";
   if(foreign){
-    bar.innerHTML = ro
+    $("viewBarText").innerHTML = ro
       ? "Viewing <b>"+esc(cur.name||"an unnamed character")+"</b>"+
-        (cur.player?" — played by "+esc(cur.player):"")+
-        ". This sheet belongs to another player and cannot be changed here."
-      : "Viewing <b>"+esc(cur.name||"an unnamed character")+"</b> as an admin. "+
-        "Anything you change here is saved to their sheet.";
+        (cur.player?" — played by "+esc(cur.player):"")+"."
+      : editing
+      ? "Editing <b>"+esc(cur.name||"an unnamed character")+"</b> as an admin. "+
+        "Anything changed here is saved to their sheet."
+      : "Viewing <b>"+esc(cur.name||"an unnamed character")+"</b> as an admin.";
     bar.className = "viewbar" + (ro ? "" : " admin");
   }
-  $("backBtn").style.display = foreign ? "" : "none";
+  $("backBtn2").style.display = foreign ? "" : "none";
+  $("backBtn").style.display = "none";      /* superseded, kept only so old refs don't break */
+  $("editToggleBtn").style.display = (foreign && isAdmin()) ? "" : "none";
+  $("editToggleBtn").textContent = editing ? "Close editor" : "Open full editor";
   $("delBtn").style.display = isAdmin() ? "" : "none";
-  var dis = ro;
+
+  var dis = ro || articleOnly;
   /* Lock everything inside the sheet itself. Anything a player may still
      use while reading someone else's sheet is listed as an exception,
      rather than everything they may not — a list that kept going stale. */
@@ -3241,9 +3274,17 @@ function renderMode(){
     }
   });
 }
-$("backBtn").onclick=function(){
+function goBackToMine(){
+  peekEdit = false;
   var mine=Store.all()[0];
   if(mine) switchTo(mine); else switchTo(blank());
+}
+$("backBtn").onclick = goBackToMine;
+$("backBtn2").onclick = goBackToMine;
+$("editToggleBtn").onclick = function(){
+  peekEdit = !peekEdit;
+  render();
+  if(peekEdit) showTab("tabStats");
 };
 
 /* ---------------- lineage lock ---------------- */
