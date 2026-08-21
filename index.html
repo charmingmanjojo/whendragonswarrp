@@ -382,6 +382,35 @@ body.sharedView .viewbar{margin-top:14px}
 .tabbtn .badge{display:inline-block;background:var(--alert);color:#fff;border-radius:9px;
   padding:0 6px;font-size:11px;margin-left:6px;font-weight:700}
 .none{padding:14px 10px;color:var(--ink-3);font-family:system-ui,sans-serif}
+
+#articleView{max-width:760px;margin:0 auto 30px;padding-top:6px}
+.artHead{border-bottom:3px double var(--accent,var(--ink));padding-bottom:10px;margin-bottom:18px}
+.artHead h1{font-family:Georgia,serif;font-size:34px;font-weight:400}
+.artHead p{color:var(--ink-2);font-style:italic;margin-top:3px}
+.artBody{display:flex;gap:26px;flex-wrap:wrap-reverse}
+.artProse{flex:1 1 340px;min-width:0}
+.artProse h2{font-family:Georgia,serif;font-size:19px;border-bottom:1px solid var(--rule);
+  padding-bottom:4px;margin:20px 0 8px}
+.artProse h2:first-child{margin-top:0}
+.artProse p{line-height:1.7;margin-bottom:10px;color:var(--ink)}
+.infobox{flex:0 0 250px;border:1px solid var(--rule);background:var(--panel-alpha);
+  align-self:flex-start}
+.infoImg{aspect-ratio:3/4;background:var(--box);display:flex;align-items:center;justify-content:center;
+  border-bottom:1px solid var(--rule)}
+.infoImg img{width:100%;height:100%;object-fit:cover}
+.infoImg span{color:var(--ink-3);font-size:12px;font-family:system-ui,sans-serif}
+.infobox table{width:100%;border-collapse:collapse;font-size:13px;font-family:system-ui,sans-serif}
+.infobox th{text-align:left;color:var(--ink-3);font-weight:600;width:36%;
+  padding:6px 8px;border-bottom:1px solid var(--rule-2);vertical-align:top}
+.infobox td{padding:6px 8px;border-bottom:1px solid var(--rule-2);vertical-align:top}
+/* A visitor who followed a share link gets the clean article and
+   nothing else. An admin opening the same character from the registry
+   keeps their tools — the article sits above as a summary, not instead
+   of the working sheet. */
+body.sharedView .page.hasArticle > header,body.sharedView .page.hasArticle > .tabbar,
+body.sharedView .page.hasArticle .roster,body.sharedView .page.hasArticle .topline{display:none}
+.page.hasArticle:not(body.sharedView .page){margin-bottom:24px}
+@media (max-width:640px){.artBody{flex-direction:column}.infobox{flex-basis:auto}}
 @media (max-width:520px){
   .tutwrap{padding:10px}
   .tut{padding:18px 16px 12px;max-height:92vh}
@@ -468,6 +497,21 @@ h2{letter-spacing:.16em}
 </div>
 
 <div class="page" id="page">
+
+<div id="articleView" style="display:none">
+  <div class="artHead">
+    <h1 id="artName">Name</h1>
+    <p id="artByline">the styling</p>
+  </div>
+  <div class="artBody">
+    <aside class="infobox">
+      <div class="infoImg" id="infoImg"></div>
+      <table id="infoTable"></table>
+    </aside>
+    <div class="artProse" id="artProse"></div>
+  </div>
+</div>
+
 
 <header>
   <div>
@@ -2269,6 +2313,7 @@ function render(){
   drawComposition("compBar","compList",STATS,function(k){ return total(k); });
   renderArms(); renderTraits(); renderHeritage(); renderYouthNote(); renderBonusNote();
   renderKnight(); renderDragon(); renderPromised(); renderStatus(); renderShare();
+  renderArticle();
   gateAdmin(); renderLock(); renderMode();
   renderReading();
   renderBuildBadge();
@@ -3044,6 +3089,69 @@ function flashSaved(){
 }
 
 function d_all(q){ return Array.prototype.slice.call(document.querySelectorAll(q)); }
+
+/* ---------------- the article view ---------------- */
+function fieldRow(label, val){
+  return val ? "<tr><th>"+label+"</th><td>"+esc(val)+"</td></tr>" : "";
+}
+function renderArticle(){
+  var on = !!cur._foreign;
+  $("articleView").style.display = on ? "" : "none";
+  $("page").classList.toggle("hasArticle", on);
+  if(!on) return;
+
+  var who = cur.name || "Unnamed";
+  $("artName").textContent = who;
+  var byline = [];
+  if(cur.house) byline.push((TITLED[cur.station]?"of House ":"")+cur.house);
+  if(cur.titles) byline.push(cur.titles);
+  else if(cur.station) byline.push(cur.station);
+  $("artByline").textContent = byline.join(" — ") || "\u00A0";
+
+  var img = $("infoImg");
+  if(cur.portrait){
+    img.innerHTML = '<img src="'+cur.portrait+'" alt="">';
+  } else {
+    img.innerHTML = '<span>No portrait</span>';
+  }
+
+  var h = lookupHouse(cur.house);
+  $("infoTable").innerHTML =
+    fieldRow("House", cur.house) +
+    fieldRow("Region", cur.region || (h?h.r:"")) +
+    fieldRow("Seat", cur.seat) +
+    fieldRow("Titles", cur.titles) +
+    fieldRow("Age", cur.age) +
+    fieldRow("Gender", cur.gender) +
+    fieldRow("Height", cur.height) +
+    fieldRow("Weight", cur.weight) +
+    fieldRow("Station", cur.station) +
+    fieldRow("Words", cur.words ? '"'+cur.words+'"' : "") +
+    fieldRow("Player", cur.player) +
+    (cur.isDead ? "<tr><th>Status</th><td>Dead"+(cur.deathNote?" — "+esc(cur.deathNote):"")+"</td></tr>" : "");
+
+  var sections = [];
+  if(cur.appearance) sections.push(["Appearance", cur.appearance]);
+  if(cur.temperament || cur.virtues || cur.vices || cur.fears || cur.goal){
+    var bits=[];
+    if(cur.temperament) bits.push(cur.temperament);
+    if(cur.virtues) bits.push("Virtues: "+cur.virtues);
+    if(cur.vices) bits.push("Vices: "+cur.vices);
+    if(cur.fears) bits.push("Fears: "+cur.fears);
+    if(cur.goal) bits.push("Wants: "+cur.goal);
+    sections.push(["Personality", bits.join(". ")]);
+  }
+  if(cur.personality) sections.push(["In their own words", cur.personality]);
+  if(cur.backstory) sections.push(["Backstory", cur.backstory]);
+  if(cur.history) sections.push(["History", cur.history]);
+
+  $("artProse").innerHTML = sections.length
+    ? sections.map(function(s){
+        return "<h2>"+esc(s[0])+"</h2><p>"+esc(s[1]).replace(/\n+/g,"</p><p>")+"</p>";
+      }).join("")
+    : "<p class='hint'>Nothing written yet.</p>";
+}
+
 function renderMode(){
   var foreign = !!cur._foreign, ro = foreign && !isAdmin();
   $("page").classList.toggle("viewonly", ro);
