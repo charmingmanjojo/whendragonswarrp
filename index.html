@@ -1,22 +1,32 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="light dark">
 <title>Character Sheet — 90 AC</title>
 <style>
- :root{
-  --paper:#1B0D03; --panel:#24140A; --box:#2D1A0B;
-  --ink:#E8D8C0; --ink-2:#B89A74; --ink-3:#82694B;
-  --rule:#51361D; --rule-2:#3B2613;
-  --fill:#8A6534; --empty:#3A2615; --capped:#4A321A;
-  --alert:#8A4033; --flag:#9A7136;
-  --web:#4A321B; --web-out:#6B4A28; --spoke:#3D2917; --shade:rgba(138,101,52,.18);
-  --paper-opacity:0;
-  --paper-filter:none;
-  --panel-alpha:rgba(36,20,10,.92);
-  --frame-color:#8A6534;
+:root{
+  --paper:#F4EBDC; --panel:#FBF5E9; --box:#EADCC4;
+  --ink:#2A1D10; --ink-2:#6B563C; --ink-3:#9A836A;
+  --rule:#C4A87E; --rule-2:#E2D2B4;
+  --fill:#7A5A2A; --empty:#E2D2B4; --capped:#EFE5D2;
+  --alert:#8C2B22; --flag:#A87524;
+  --web:#E2D2B4; --web-out:#BFA377; --spoke:#EADCC4; --shade:rgba(122,90,42,.16);
+  --paper-opacity:.5;
+  --paper-filter:saturate(.75) contrast(.95);
+  --panel-alpha:rgba(251,245,233,.90);
+}
+html[data-theme="dark"]{
+  --paper:#1B1409; --panel:#241B0E; --box:#312512;
+  --ink:#F0E3CB; --ink-2:#C0A87F; --ink-3:#8E7A58;
+  --rule:#4E3C1F; --rule-2:#33270F;
+  --fill:#C9A24A; --empty:#33270F; --capped:#291F0C;
+  --alert:#D8776B; --flag:#E0B85A;
+  --web:#33270F; --web-out:#5E4A24; --spoke:#2A2010; --shade:rgba(201,162,74,.18);
+  --paper-opacity:.14;
+  --paper-filter:saturate(.6) brightness(.5) contrast(1.05);
+  --panel-alpha:rgba(36,27,14,.92);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 /* The parchment sits behind the page, never under the text itself.
@@ -135,6 +145,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-3);border-top:1px solid va
 #registry button{padding:5px 9px;min-height:32px;margin-left:4px}
 #registry .none{padding:14px 9px;color:var(--ink-3);font-family:system-ui,sans-serif}
 .ico{width:26px;height:26px;vertical-align:-6px;margin-right:9px;image-rendering:auto}
+html[data-theme="dark"] .ico{filter:brightness(1.08)}
 .bonus{font-size:12px;color:var(--flag);margin-left:4px;vertical-align:2px;font-weight:600}
 .bonusnote{font-size:13px;border-left:3px solid var(--flag);background:var(--box);
   padding:8px 11px;margin-bottom:12px;color:var(--ink-2);font-family:system-ui,sans-serif}
@@ -145,27 +156,17 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-3);border-top:1px solid va
   background:var(--box);color:var(--ink-2)}
 #knightRoll .stat .name{padding-left:2px}
 .topbtns{display:flex;gap:6px;flex-wrap:wrap}
-.colorPanel{border:1px solid var(--rule);background:var(--panel);padding:10px 12px;
-  margin-top:8px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;
-  font-family:system-ui,sans-serif}
-.colorRow{display:flex;align-items:center;gap:7px}
-.colorRow label{margin:0;font-size:11px}
-.colorRow input[type=color]{width:36px;height:32px;padding:2px;cursor:pointer}
-.hexIn{width:90px;font-family:ui-monospace,Consolas,monospace;text-transform:uppercase}
 html.noPaper body::before{display:none}
 .logo{display:block;max-width:330px;width:60vw;height:auto;margin-bottom:10px}
+html[data-theme="light"] .logo{filter:brightness(.55) contrast(1.3)}
 .face{display:flex;gap:14px;margin-top:16px;flex-wrap:wrap}
-.facebox{width:150px;height:210px;flex:none;position:relative;border:0;
+.facebox{width:150px;height:210px;flex:none;position:relative;background:none;border:0;
   display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(135deg,color-mix(in srgb,var(--frame-color) 60%,white),
-    var(--frame-color) 45%,color-mix(in srgb,var(--frame-color) 70%,black));
-  box-shadow:inset 0 0 0 2px rgba(0,0,0,.5),
-    inset 0 0 0 5px color-mix(in srgb,var(--frame-color) 55%,white),
-    inset 0 0 0 6px rgba(0,0,0,.45),
-    0 3px 6px rgba(0,0,0,.6);
-  padding:12px}
-.facebox img{position:absolute;top:13px;left:13px;right:13px;bottom:13px;
-  width:calc(100% - 26px);height:calc(100% - 26px);object-fit:cover;
+  background-image:var(--frame-img);background-size:100% 100%;background-repeat:no-repeat;
+  filter:drop-shadow(0 3px 6px rgba(0,0,0,.28))}
+html[data-theme="dark"] .facebox{filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)) brightness(.86)}
+.facebox img{position:absolute;top:15px;left:15px;right:15px;bottom:15px;
+  width:calc(100% - 30px);height:calc(100% - 30px);object-fit:cover;
   filter:sepia(.16) contrast(1.02)}
 .facebox span{position:relative;font-size:11px;color:#6b5a3e;letter-spacing:.14em;
   text-transform:uppercase;font-family:system-ui,sans-serif}
@@ -331,6 +332,7 @@ html.housed .ageTabBtn.cur{border-color:var(--accent);color:var(--accent)}
   max-height:86vh;display:flex;flex-direction:column}
 #tutBody{overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
   padding-right:4px;flex:1 1 auto;min-height:0}
+.tiny{padding:3px 9px;font-size:11.5px;min-height:0;margin-left:8px}
 .tut h3{font-family:Georgia,serif;font-size:20px;color:var(--flag);margin-bottom:10px;
   position:sticky;top:0;background:var(--panel);padding-bottom:6px}
 .tut p{font-size:14.5px;line-height:1.55;margin-bottom:10px;color:var(--ink)}
@@ -338,6 +340,48 @@ html.housed .ageTabBtn.cur{border-color:var(--accent);color:var(--accent)}
   line-height:1;padding:4px 9px;min-height:0;color:var(--ink-3)}
 .tutfoot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none;
   margin-top:12px;border-top:1px solid var(--rule-2);padding-top:12px;background:var(--panel)}
+.eqgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:640px){.eqgrid{grid-template-columns:1fr}}
+.eqbox{width:100%;min-height:64px;resize:vertical;font-family:Georgia,serif;font-size:15px;
+  padding:9px 10px;border:1px solid var(--rule);background:var(--panel-alpha);color:var(--ink);
+  line-height:1.55;overflow:hidden}
+.eqbox:focus{outline:2px solid var(--ink);outline-offset:-1px}
+body.sharedView .tabbar,body.sharedView .roster,body.sharedView #tutBtn,
+body.sharedView footer .bar{display:none}
+body.sharedView .viewbar{margin-top:14px}
+.num[data-why],.num[data-kwhy]{cursor:pointer}
+.num[data-why]:hover,.num[data-kwhy]:hover{text-decoration:underline dotted;text-underline-offset:4px}
+.why{grid-column:1/3;margin-top:8px}
+.whytable{width:100%;border-collapse:collapse;font-size:12.5px;
+  font-family:system-ui,sans-serif;background:var(--box);border:1px solid var(--rule-2)}
+.whytable td{padding:5px 9px;border-bottom:1px solid var(--rule-2)}
+.whytable td:last-child{text-align:right;font-variant-numeric:tabular-nums;width:70px}
+.whytable .up{color:var(--flag)}
+.whytable .down{color:var(--alert)}
+.whytable .cap td{color:var(--ink-3);font-style:italic}
+.whytable .tot td{font-weight:700;border-bottom:0;background:var(--panel-alpha)}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.bell{font-size:12.5px;padding:5px 11px;min-height:0;border-color:var(--flag);color:var(--flag)}
+.bell.has{background:var(--flag);color:#241900;font-weight:700}
+.notices{border:1px solid var(--flag);background:var(--box);margin-top:8px;max-height:230px;overflow:auto}
+.notices .n{padding:10px 12px;border-bottom:1px solid var(--rule-2);font-size:13.5px;
+  font-family:system-ui,sans-serif}
+.notices .n.unseen{background:var(--accent-soft,var(--panel-alpha))}
+.notices .n b{display:block;margin-bottom:2px}
+.notices .n small{color:var(--ink-3)}
+.inline{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;
+  font-family:system-ui,sans-serif;text-transform:none;letter-spacing:0;color:var(--ink-2)}
+.inline input{width:16px;height:16px;padding:0}
+#pendList,#peopleList{border:1px solid var(--rule);background:var(--panel-alpha);margin-top:10px;
+  max-height:420px;overflow:auto}
+#pendList table,#peopleList table{width:100%;border-collapse:collapse;font-size:13.5px;
+  font-family:system-ui,sans-serif}
+#pendList td,#peopleList td{padding:9px;border-bottom:1px solid var(--rule-2);vertical-align:top}
+#pendList td:last-child,#peopleList td:last-child{text-align:right;white-space:nowrap;width:1%}
+#pendList button,#peopleList button{padding:5px 10px;min-height:30px;margin-left:4px}
+.tabbtn .badge{display:inline-block;background:var(--alert);color:#fff;border-radius:9px;
+  padding:0 6px;font-size:11px;margin-left:6px;font-weight:700}
+.none{padding:14px 10px;color:var(--ink-3);font-family:system-ui,sans-serif}
 @media (max-width:520px){
   .tutwrap{padding:10px}
   .tut{padding:18px 16px 12px;max-height:92vh}
@@ -402,7 +446,7 @@ h2{letter-spacing:.16em}
 .pendingBox{padding:10px 12px;margin-bottom:12px;border:1px solid var(--flag);background:var(--box)}
 @media print{
   body{background:#fff;color:#000}
-  .ctrl,.bar,.award,#log,.notice,.roster,footer{display:none}
+  .ctrl,.bar,.award,#log,.notice,.roster,footer,#themeBtn{display:none}
   section{margin-top:16px;break-inside:avoid}
 }
 </style>
@@ -433,32 +477,20 @@ h2{letter-spacing:.16em}
   </div>
   <div class="topbtns">
     <button id="tutBtn" title="How this works">?</button>
-    <button id="colorBtn" aria-expanded="false">Colors</button>
-    <button id="createCharBtn">Create Character</button>
+    <button id="paperBtn" aria-pressed="true">Plain background</button>
+    <button id="themeBtn" aria-pressed="false">Dark mode</button>
   </div>
 </header>
-
-<div id="colorPanel" class="colorPanel" style="display:none">
-  <div class="colorRow">
-    <label for="bgColorPick">Background color</label>
-    <input type="color" id="bgColorPick">
-    <input type="text" id="bgColorHex" class="hexIn" maxlength="7" placeholder="#1B0D03">
-  </div>
-  <div class="colorRow">
-    <label for="frameColorPick">Frame color</label>
-    <input type="color" id="frameColorPick">
-    <input type="text" id="frameColorHex" class="hexIn" maxlength="7" placeholder="#8A6534">
-  </div>
-  <div class="colorRow">
-    <button id="colorResetBtn" type="button">Reset to default</button>
-  </div>
-</div>
 
 <div class="arms" id="armsBox" style="display:none"></div>
 <p class="viewbar" id="viewBar" style="display:none"></p>
 <p class="denyflash" id="denyFlash" style="display:none"></p>
 
-<span class="savedtag" id="savedTag">Saved</span>
+<div class="topline">
+  <button id="bellBtn" class="bell" style="display:none">Notices <span id="bellCount">0</span></button>
+  <span class="savedtag" id="savedTag">Saved</span>
+</div>
+<div id="noticeList" class="notices" style="display:none"></div>
 <div class="tabbar" id="tabbar">
   <button class="tabbtn" data-tab="tabSheet">Sheet</button>
   <button class="tabbtn" data-tab="tabEquipment">Equipment</button>
@@ -795,22 +827,49 @@ h2{letter-spacing:.16em}
 <section>
   <h2>Equipment</h2>
   <p class="hint">Kept apart from the main sheet so it doesn't clutter it. Weapons, armour, mounts,
-    and the odd valuable worth writing down.</p>
-  <div class="fields">
-    <div class="wide"><label for="f_equipWeapons">Weapons</label>
-      <input id="f_equipWeapons" data-f="equipWeapons" autocomplete="off" placeholder="Longsword, hunting bow…"></div>
-    <div class="wide"><label for="f_equipArmor">Armour</label>
-      <input id="f_equipArmor" data-f="equipArmor" autocomplete="off" placeholder="Boiled leather, a borrowed mail shirt…"></div>
-    <div class="wide"><label for="f_equipMounts">Mounts &amp; beasts</label>
-      <input id="f_equipMounts" data-f="equipMounts" autocomplete="off" placeholder="A courser named…"></div>
-    <div class="wide"><label for="f_equipValuables">Valuables &amp; heirlooms</label>
-      <input id="f_equipValuables" data-f="equipValuables" autocomplete="off" placeholder="A signet ring, a Valyrian steel dagger…"></div>
+    and the odd valuable worth writing down. Each box grows as you type.</p>
+  <div class="eqgrid">
+    <div><label for="f_equipWeapons">Weapons</label>
+      <textarea id="f_equipWeapons" data-f="equipWeapons" class="eqbox" rows="3"
+        placeholder="Longsword, hunting bow…"></textarea></div>
+    <div><label for="f_equipArmor">Armour</label>
+      <textarea id="f_equipArmor" data-f="equipArmor" class="eqbox" rows="3"
+        placeholder="Boiled leather, a borrowed mail shirt…"></textarea></div>
+    <div><label for="f_equipMounts">Mounts &amp; beasts</label>
+      <textarea id="f_equipMounts" data-f="equipMounts" class="eqbox" rows="3"
+        placeholder="A courser named…"></textarea></div>
+    <div><label for="f_equipValuables">Valuables &amp; heirlooms</label>
+      <textarea id="f_equipValuables" data-f="equipValuables" class="eqbox" rows="3"
+        placeholder="A signet ring, a Valyrian steel dagger…"></textarea></div>
   </div>
-  <label for="f_equipNotes" style="margin-top:10px">Notes</label>
-  <textarea id="f_equipNotes" data-f="equipNotes" rows="4"
+  <label for="f_equipNotes" style="margin-top:12px">Notes</label>
+  <textarea id="f_equipNotes" data-f="equipNotes" class="eqbox" rows="5"
     placeholder="Anything else carried, worn, or stabled."></textarea>
 </section>
 </div><!-- /tabEquipment -->
+
+
+<div id="tabAdmin" class="tabpanel">
+  <section>
+    <h2>Waiting on you</h2>
+    <div class="bar">
+      <button id="pendBtn">Refresh</button>
+      <span class="rlen" id="pendCount"></span>
+    </div>
+    <div id="pendList"></div>
+  </section>
+
+  <section>
+    <h2>The people</h2>
+    <p class="hint">Everyone who has ever opened the site, named by the player names on their
+      characters. Promote or demote without touching the database.</p>
+    <div class="bar">
+      <button id="peopleBtn">Load people</button>
+      <input type="text" id="peopleSearch" placeholder="Search by player name" style="flex:1 1 180px">
+    </div>
+    <div id="peopleList"></div>
+  </section>
+</div>
 
 <div id="tabFamily" class="tabpanel">
 <section>
@@ -861,6 +920,15 @@ h2{letter-spacing:.16em}
   <h2>Server</h2>
   <p class="srvstatus" id="srvStatus">Local only</p>
   <p class="hint">Recovery code for this character: <b id="claimCode">—</b>
+     <button id="regenBtn" class="tiny">Regenerate</button></p>
+  <div class="bar" style="margin-top:8px">
+    <button id="shareBtn">Copy shareable link</button>
+    <label class="inline"><input type="checkbox" id="f_shared"> Allow the link to work</label>
+    <span class="rlen" id="shareNote">Opens this one character, read-only. Untick to switch every
+      shared link off.</span>
+  </div>
+  <p class="hint" id="regenNote" style="display:none">The old code stopped working just now.
+    Anyone still holding it can no longer use it. Share the new one instead.</p>
      — write it down to open this sheet on another device.</p>
   <div class="bar" style="margin-top:10px">
     <input type="text" id="claimInput" placeholder="Paste a recovery code" style="flex:1 1 180px">
@@ -1522,20 +1590,10 @@ function $(id){ return document.getElementById(id); }
    Server-side row level security enforces the same rule, so editing
    the page in a console gains nobody anything. */
 function isAdmin(){ return !!(window.Cloud && Cloud.admin); }
-/* A second (or later) character on the same account starts locked —
-   nothing can be typed into it — until an admin approves it. */
-function lockedSecond(){ return !!(cur.pendingSecond && !cur.is_approved); }
-function editable(){
-  if(isAdmin()) return true;
-  if(cur._foreign) return false;
-  if(lockedSecond()) return false;
-  return true;
-}
+function editable(){ return !cur._foreign || isAdmin(); }
 function denied(){
   if(editable()) return false;
-  flash(lockedSecond()
-    ? "This is an extra character on your account — an admin has to approve it before you can fill it out."
-    : "That sheet belongs to another player.");
+  flash("That sheet belongs to another player.");
   return true;
 }
 var flashTimer;
@@ -1596,8 +1654,16 @@ function blank(){
 var cur = blank();
 
 /* ---- theme ---- */
-/* Dark brown is the only theme. There is no light-mode switch. */
-document.documentElement.setAttribute("data-theme","dark");
+function setTheme(t){
+  document.documentElement.setAttribute("data-theme",t);
+  $("themeBtn").textContent = t==="dark" ? "Light mode" : "Dark mode";
+  $("themeBtn").setAttribute("aria-pressed", t==="dark" ? "true":"false");
+  Store.pref("theme",t);
+  if(window.cur) renderArms();
+}
+$("themeBtn").onclick = function(){
+  setTheme(document.documentElement.getAttribute("data-theme")==="dark" ? "light":"dark");
+};
 
 /* ---- station + house list ---- */
 (function(){
@@ -1706,21 +1772,7 @@ function openForeign(c){
 }
 $("rosterSel").onchange = function(){
   var c=Store.read(PRE+"char."+this.value); if(c) switchTo(c); };
-/* Create a character, gated: an account may freely make its first OC,
-   but a second (or later) one is created locked and needs an admin's
-   approval, via the roster's "waiting" flag, before it can be edited. */
-function newCharGated(){
-  var c = blank();
-  if(!isAdmin() && Store.all().length>=1){
-    c.pendingSecond = true;
-    c.approval = "Second character on this account — awaiting admin approval before it can be filled out";
-  }
-  switchTo(c);
-  $("f_name").focus();
-  if(c.pendingSecond) flash("Created and sent for approval. It will unlock once an admin approves it.");
-}
-$("newBtn").onclick = newCharGated;
-$("createCharBtn").onclick = newCharGated;
+$("newBtn").onclick = function(){ switchTo(blank()); $("f_name").focus(); };
 $("dupBtn").onclick = function(){
   var c=JSON.parse(JSON.stringify(cur)); c.id=uid();
   c.name=(c.name||"Unnamed")+" (copy)"; c.created=new Date().toISOString();
@@ -1806,7 +1858,86 @@ function traitList(){
    One: piling two gifts into a single attribute pays less the second time.
    Two: a price you cannot afford is taken out of the gift instead, so
    dumping an attribute to nothing no longer buys a free +5. */
+/* Every source pushing an attribute up or down, named and in one list.
+   Five separate causes used to appear as five separate notes; this is
+   the single answer to "why is my Awareness zero?" */
+function whyCore(key){
+  var out=[], v=cur.scores[key]||0;
+  out.push({n:"Points spent", d:v});
+  if(key==="knowledge" && isNobleborn()) out.push({n:"Nobleborn", d:5});
+  if(key==="beauty" && isValyrian() && cur.heritage!=="valyrian") out.push({n:"Valyrian blood", d:10});
+  if(key==="athletics" && isBaratheonMan()) out.push({n:"Baratheon blood", d:6});
+  var h=heritage();
+  if(h && h.core[key]) out.push({n:"Heritage — "+h.name, d:h.core[key]});
+  injuryList().forEach(function(i){ if(i.core[key]) out.push({n:i.name, d:i.core[key]}); });
+  var d=declineBand();
+  if(d && d.core[key]) out.push({n:"Age "+ageNum(), d:d.core[key]});
+  var te=traitEffectsRaw();
+  (te.notes[key]||[]).forEach(function(x){ out.push(x); });
+  return out;
+}
+function whyKnight(key){
+  var out=[{n:"Points spent", d:cur.knight[key]||0}];
+  if(key==="strength"||key==="defense"){
+    var a=athleticsStep(); if(a) out.push({n:"Natural Athletics", d:a});
+  }
+  if(key==="skill"){ var m=martialStep(); if(m) out.push({n:"Martial above 20", d:m}); }
+  if(key==="resolve"){ var r=martialStepResolve(); if(r) out.push({n:"Martial above 20", d:r}); }
+  if(key==="camaraderie"){ var l=leadershipStep(); if(l) out.push({n:"Leadership", d:l}); }
+  var h=heritage();
+  if(h && h.knight[key]) out.push({n:"Heritage — "+h.name, d:h.knight[key]});
+  var b=bodyType();
+  if(b && b.knight[key]) out.push({n:"Build — "+b.name, d:b.knight[key]});
+  injuryList().forEach(function(i){ if(i.knight && i.knight[key]) out.push({n:i.name, d:i.knight[key]}); });
+  return out;
+}
+function whyHTML(list, finalTotal, ceiling){
+  var raw=list.reduce(function(a,x){ return a+x.d; },0);
+  var rows=list.filter(function(x){ return x.d; }).map(function(x){
+    return '<tr><td>'+esc(x.n)+'</td><td class="'+(x.d<0?'down':'up')+'">'+
+      (x.d>0?'+':'')+x.d+'</td></tr>';
+  }).join("");
+  var tail="";
+  if(raw!==finalTotal){
+    tail='<tr class="cap"><td>'+(raw<0?'Nothing goes below 0':'Held at the ceiling of '+ceiling)+
+         '</td><td>'+(finalTotal-raw>0?'+':'')+(finalTotal-raw)+'</td></tr>';
+  }
+  return '<table class="whytable">'+rows+tail+
+    '<tr class="tot"><td>Total</td><td>'+finalTotal+'</td></tr></table>';
+}
+function toggleWhy(key, knight){
+  var id=(knight?"kwhy-":"why-")+key, box=document.getElementById(id);
+  if(!box) return;
+  var open = box.style.display !== "none" && box.innerHTML;
+  if(open){ box.style.display="none"; return; }
+  box.innerHTML = knight
+    ? whyHTML(whyKnight(key), knightTotal(key), knightCap())
+    : whyHTML(whyCore(key), total(key), MAX);
+  box.style.display="";
+}
+
+function traitEffectsRaw(){
+  var eff={}, notes={}, rem={}, seen={};
+  traitList().forEach(function(t){
+    seen[t.plus]=(seen[t.plus]||0)+1;
+    var gain = seen[t.plus]>1 ? TRAIT_REPEAT : TRAIT_PLUS;
+    var cost=Math.abs(TRAIT_MINUS);
+    if(!(t.minus in rem)) rem[t.minus]=cur.scores[t.minus]||0;
+    var paid=Math.min(cost, rem[t.minus]); rem[t.minus]-=paid;
+    var owing=cost-paid;
+    eff[t.plus]=(eff[t.plus]||0)+gain-owing;
+    (notes[t.plus]=notes[t.plus]||[]).push({n:"Trait — "+t.name, d:gain-owing});
+    if(paid){
+      eff[t.minus]=(eff[t.minus]||0)-paid;
+      (notes[t.minus]=notes[t.minus]||[]).push({n:"Trait — "+t.name, d:-paid});
+    }
+  });
+  return { eff:eff, notes:notes };
+}
 function traitEffects(){
+  return traitEffectsRaw().eff;
+}
+function traitEffectsOld(){
   var eff={}, rem={}, seen={};
   traitList().forEach(function(t){
     seen[t.plus]=(seen[t.plus]||0)+1;
@@ -1849,11 +1980,19 @@ function martialStepResolve(){
   var m = total("martial");
   return m <= 20 ? 0 : Math.floor((m - 20) / 10);
 }
+/* Command in the hall does not teach command on a battlefield by itself,
+   but a lord who can hold a council together has some of what it takes
+   to hold a line together too. One point for every five, so it helps
+   without making the two skills the same thing. */
+function leadershipStep(){
+  return Math.floor(total("leadership") / 5);
+}
 function knightBonusFor(key){
   var b = 0;
   if(key === "strength" || key === "defense") b += athleticsStep();
   if(key === "skill") b += martialStep();
   if(key === "resolve") b += martialStepResolve();
+  if(key === "camaraderie") b += leadershipStep();
   var h=heritage();
   if(h && h.knight[key]) b += h.knight[key];
   var bt=bodyType();
@@ -1933,8 +2072,12 @@ var roll=$("roll");
 STATS.forEach(function(s){
   var row=document.createElement("div"); row.className="stat"; row.title=s.blurb;
   row.innerHTML='<div class="name"><img class="ico" src="'+(ICONS[s.key]||"")+'" alt="">'+
-    s.name+'</div><div class="num" id="num-'+s.key+'">0</div>'+
-    '<div class="rank" id="rank-'+s.key+'"></div><div class="ctrl">'+
+    s.name+'</div>'+
+    '<div class="num" id="num-'+s.key+'" role="button" tabindex="0" '+
+      'title="Where this number comes from" data-why="'+s.key+'">0</div>'+
+    '<div class="rank" id="rank-'+s.key+'"></div>'+
+    '<div class="why" id="why-'+s.key+'" style="display:none"></div>'+
+    '<div class="ctrl">'+
     '<button data-dec="'+s.key+'" aria-label="Lower '+s.name+'">&minus;</button>'+
     '<div class="track" id="track-'+s.key+'">'+
     Array.apply(null,{length:MAX}).map(function(){ return '<span class="cell"></span>'; }).join("")+
@@ -1994,6 +2137,12 @@ STATS.forEach(function(s){
     if(from!==undefined && from!==cur.scores[s.key])
       record(s.name+" "+from+" \u2192 "+cur.scores[s.key], cur.scores[s.key]-from, ""); });
 });
+document.addEventListener("click",function(e){
+  var a=e.target.getAttribute && e.target.getAttribute("data-why");
+  var b=e.target.getAttribute && e.target.getAttribute("data-kwhy");
+  if(a) toggleWhy(a,false);
+  if(b) toggleWhy(b,true);
+});
 roll.addEventListener("click",function(e){
   var i=e.target.getAttribute("data-inc"), d=e.target.getAttribute("data-dec");
   if(i) setVal(i,cur.scores[i]+1,true);
@@ -2003,6 +2152,11 @@ roll.addEventListener("click",function(e){
 FIELDS.forEach(function(f){
   var el=$("f_"+f); if(!el) return;
   var ev = el.tagName==="SELECT" ? "change" : "input";
+  if(el.classList && el.classList.contains("eqbox")){
+    var grow=function(){ el.style.height="auto"; el.style.height=(el.scrollHeight+2)+"px"; };
+    el.addEventListener("input", grow);
+    setTimeout(grow, 0);
+  }
   el.addEventListener(ev,function(){
     if(denied()){ fill(); return; }
     cur[f]=el.value; Store.put(cur);
@@ -2114,7 +2268,8 @@ function render(){
   $("page").className="page"+(over?" over":"");
   drawComposition("compBar","compList",STATS,function(k){ return total(k); });
   renderArms(); renderTraits(); renderHeritage(); renderYouthNote(); renderBonusNote();
-  renderKnight(); renderDragon(); renderPromised(); renderStatus(); gateAdmin(); renderLock(); renderMode();
+  renderKnight(); renderDragon(); renderPromised(); renderStatus(); renderShare();
+  gateAdmin(); renderLock(); renderMode();
   renderReading();
   renderBuildBadge();
   $("sheet").textContent=sheetText();
@@ -2557,6 +2712,7 @@ KNIGHT.forEach(function(s){
   var row=document.createElement("div"); row.className="stat"; row.title=s.blurb;
   row.innerHTML='<div class="name">'+s.name+'</div><div class="num" id="knum-'+s.key+'">0</div>'+
     '<div class="rank" id="krank-'+s.key+'"></div>'+
+    '<div class="why" id="kwhy-'+s.key+'" style="display:none"></div>'+
     '<div class="kctrl">'+
       '<button data-kdec="'+s.key+'" aria-label="Lower '+s.name+'">&minus;</button>'+
       '<div class="kbar" id="ktrack-'+s.key+'">'+
@@ -2782,6 +2938,8 @@ function safeOn(id, fn){
 }
 function gateAdmin(){
   var a = isAdmin();
+  var at = document.getElementById("adminTabBtn");
+  if(at) at.style.display = a ? "" : "none";
   ADMIN_ONLY.forEach(function(id){
     var el = document.getElementById(id); if(!el) return;
     if(el.tagName === "INPUT" || el.tagName === "SELECT" || el.tagName === "BUTTON")
@@ -2803,7 +2961,8 @@ var TAB_PLAN = [
   ["tabFamily","Family",    []],
   ["tabAges",  "Ages",      []],
   ["tabWorld", "Registry",  ["The realm","Server"]],
-  ["tabRecord","Record",    ["Record","Build summary","Plain text"]]
+  ["tabRecord","Record",    ["Record","Build summary","Plain text"]],
+  ["tabAdmin", "Admin",     []]
 ];
 function showTab(id){
   d_all(".tabpanel").forEach(function(p){ p.classList.toggle("active", p.id === id); });
@@ -2846,6 +3005,7 @@ function layOutTabs(){
     });
     var b = document.createElement("button");
     b.className = "tabbtn"; b.setAttribute("data-tab", id); b.textContent = label;
+    if(id === "tabAdmin"){ b.id = "adminTabBtn"; b.style.display = "none"; }
     bar.appendChild(b);
   });
 
@@ -3195,6 +3355,11 @@ function statusOf(){
   if(cur.submitted) return {k:"wait", t:"Submitted — waiting on an admin"};
   return {k:"draft", t:"Draft. Not yet submitted."};
 }
+function renderShare(){
+  var el=$("f_shared"); if(!el) return;
+  el.checked = !cur.isPrivate;
+  el.disabled = !!(cur._foreign && !isAdmin());
+}
 function renderStatus(){
   var st=statusOf(), b=$("statusBox");
   b.className="statusbox "+st.k;
@@ -3301,30 +3466,32 @@ var TUT=[
   p:["This is your character sheet. It's slightly different from Google Docs or other templates you're used to, but it's all the same."]},
 
  {h:"Who are they",
-  p:["This character sheet allows you to join any house, whether it's Great or Small. We have over <b>463</b> of the Houses of Westeros in our database for you to choose from.",
-     "You do not have to be a Great Lord or the Heir to a Noble House. You can choose to be a Bastard, a Hedgeknight, Smallfolk, a Merchant, an Essosi, etc.",
-     "In When Dragons War, to ensure some accuracy, your age decides your stat point cap &mdash; this being <b>39 Points</b> max if you're under 16, <b>70 points</b> if you're under 18, and <b>115</b> if you're 18+.",
-     "The Stat caps can be circumvented by the Prodigy Trait.",
-     "You may also have extra points assigned based on your backstory/history, which requires approval by Hirosamei."]},
+  p:["This character sheet allows you to join any house, whether it's Great or Small. We have over 463 of the Houses of Westeros in our database for you to choose from.",
+     "You do not have to be a Great Lord or the heir to a noble house. You can choose to be a bastard, a hedge knight, smallfolk, a merchant, an Essosi, and so on.",
+     "In When Dragons War, to ensure some accuracy, your age decides your stat point cap: <b>39 points</b> if you're under 16, <b>70 points</b> if you're under 18, and <b>115 points</b> if you're 18 or over.",
+     "The stat caps can be circumvented by the Prodigy trait.",
+     "You may also have extra points assigned based on your backstory and history, which requires approval by Hirosamei."]},
 
  {h:"Nobody is good at everything",
   p:["We understand that you've come here to roleplay great people, but we must let you know that even great people are ordinary at most things.",
-     "In the Roleplay, the <b>115 Points</b> (assuming your OC is 18+) are spread across thirteen attributes, meaning <b>8 is the average</b>, ordinary spread if you were going for a most balanced build.",
-     "We try to minimize minimaxing as much as possible, but at the end of the day your character build is up to you.",
+     "In the roleplay, the 115 points — assuming your OC is 18 or over — are spread across thirteen attributes, meaning <b>8 is the average</b>, the ordinary spread if you were going for the most balanced build.",
+     "We try to minimise min-maxing as much as possible, but at the end of the day your character build is up to you.",
      "A bit of advice: decide who your character is before you spend any points."]},
 
- {h:"Buffs &amp; Debuffs",
-  p:["In When Dragons War, there are buffs and debuffs. For example, Nobleborn OCs are granted <b>+5 Knowledge</b> due to their upbringing with Maesters and whatnot, and those of Valyrian Blood, such as the Targaryens or Velaryons, are blessed with a <b>+10 Beauty</b>, etc.",
-     "These traits are assigned through Heritage, (Physical) Build, and afflictions.",
-     "Most traits follow the law of equivalent exchange: a trait may give you +5 in one attribute but -3 in another, to balance the scales."]},
+ {h:"Buffs &amp; debuffs",
+  p:["In When Dragons War, there are buffs and debuffs. For example, nobleborn OCs are granted <b>+5 Knowledge</b> due to their upbringing with maesters and whatnot, and those of Valyrian blood such as the Targaryens or Velaryons are blessed with <b>+10 Beauty</b>.",
+     "These are assigned through Heritage, physical Build and afflictions.",
+     "Most traits follow the law of equivalent exchange: a trait may give you +5 in one attribute but &minus;3 in another, to balance the scales."]},
 
  {h:"Knights",
-  p:["To all of my Knights: you have an extra, separate stat sheet strictly for your combative ability as a Knight, only accessible by reaching <b>16</b> in the Martial Attribute.",
-     "The Knight sheet covers Strength, Defense, Skill, Resolve, and Camaraderie.",
-     "If you reach <b>30</b> in two attributes, you will have achieved a build unique to your character."]},
+  p:["To all of my knights: you have an extra, separate stat sheet strictly for your combative ability as a knight, which is only accessible by reaching <b>16 in the Martial attribute</b>.",
+     "The knight sheet covers Strength, Defense, Skill, Riding, Resolve and Camaraderie.",
+     "If you reach <b>30 in two attributes</b>, you will have achieved a build unique to your character."]},
 
  {h:"When you are done",
-  p:["Click the <b>Registry</b> Tab and hit <b>Connect Discord</b>, so you will never lose access to your character sheet, and submit your OC for Approval."]}
+  p:["Click the <b>Registry</b> tab and hit <b>Connect Discord</b>, so you will never lose access to your character sheet.",
+     "Then submit your OC for approval.",
+     "You can reopen this any time with the <b>?</b> beside the theme buttons."]}
 ];
 var tutAt=0;
 function tutDraw(){
@@ -3347,45 +3514,54 @@ if(!Store.pref("seenTut")) setTimeout(tutOpen,600);
 
 $("logoImg").src = LOGO;
 document.documentElement.style.setProperty("--paper-img","url("+ART.paper+")");
-/* Background is always plain now — no parchment toggle. */
-document.documentElement.classList.add("noPaper");
-
-/* ---- custom colors: background + frame, via color wheel or hex ---- */
-var DEFAULT_BG = "#1B0D03", DEFAULT_FRAME = "#8A6534";
-function hexOk(s){ return /^#[0-9a-fA-F]{6}$/.test(s||""); }
-function applyBg(hex){
-  document.documentElement.style.setProperty("--paper", hex);
-  $("bgColorPick").value = hex; $("bgColorHex").value = hex;
-  Store.pref("bgColor", hex);
+document.documentElement.style.setProperty("--frame-img","url("+ART.frame+")");
+function setPaper(on){
+  document.documentElement.classList.toggle("noPaper", !on);
+  $("paperBtn").textContent = on ? "Plain background" : "Parchment";
+  $("paperBtn").setAttribute("aria-pressed", on ? "true" : "false");
+  Store.pref("paper", on ? 1 : 0);
 }
-function applyFrame(hex){
-  document.documentElement.style.setProperty("--frame-color", hex);
-  $("frameColorPick").value = hex; $("frameColorHex").value = hex;
-  Store.pref("frameColor", hex);
-}
-$("bgColorPick").oninput = function(){ applyBg(this.value); };
-$("frameColorPick").oninput = function(){ applyFrame(this.value); };
-$("bgColorHex").addEventListener("change", function(){
-  var v = this.value.trim(); if(v[0]!=="#") v="#"+v;
-  if(hexOk(v)) applyBg(v); else this.value = Store.pref("bgColor")||DEFAULT_BG;
-});
-$("frameColorHex").addEventListener("change", function(){
-  var v = this.value.trim(); if(v[0]!=="#") v="#"+v;
-  if(hexOk(v)) applyFrame(v); else this.value = Store.pref("frameColor")||DEFAULT_FRAME;
-});
-$("colorResetBtn").onclick = function(){ applyBg(DEFAULT_BG); applyFrame(DEFAULT_FRAME); };
-$("colorBtn").onclick = function(){
-  var open = $("colorPanel").style.display !== "none";
-  $("colorPanel").style.display = open ? "none" : "";
-  $("colorBtn").setAttribute("aria-expanded", open ? "false" : "true");
+$("paperBtn").onclick=function(){
+  setPaper(document.documentElement.classList.contains("noPaper"));
 };
-applyBg(DEFAULT_BG);
-applyFrame(DEFAULT_FRAME);
-
 $("portraitPick").onclick=function(){
   if(denied()) return; $("portraitFile").click(); };
 
+/* A shared link opens one character read-only and nothing else.
+   No sign-in, no roster, no admin tools — just the sheet. */
+function trySharedLink(){
+  var m = window.location.search.match(/[?&]view=([a-f0-9-]+)/i);
+  if(!m) return false;
+  var id = m[1];
+  document.body.classList.add("sharedView");
+  function load(){
+    Cloud.sb.from("characters").select("sheet,owner,is_approved,is_dead")
+      .eq("id", id).single().then(function(r){
+        if(r.error || !r.data || !r.data.sheet){
+          cloudStatus("That link no longer points to a character.","bad");
+          return;
+        }
+        var c = r.data.sheet; c.id = id; c.is_approved = r.data.is_approved;
+        c.isDead = r.data.is_dead; c.prodigy = false;
+        openForeign(c);
+        drawLog(); refreshTitles();
+      });
+  }
+  if(Cloud.ready) load(); else {
+    var tries=0, t=setInterval(function(){
+      tries++; if(Cloud.ready){ clearInterval(t); load(); }
+      else if(tries>40) clearInterval(t);
+    }, 150);
+  }
+  return true;
+}
+
 (function(){
+  var pp=Store.pref("paper");
+  setPaper(pp===null || pp===undefined ? true : !!pp);
+  var pref=Store.pref("theme");
+  setTheme(pref || (window.matchMedia &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark":"light"));
   var id=Store.pref("current"), found=id?Store.read(PRE+"char."+id):null;
   cur = found || Store.all()[0] || cur;
   if(!cur.scores) cur=blank();
@@ -3399,7 +3575,10 @@ $("portraitPick").onclick=function(){
   Store.put(cur); Store.pref("current",cur.id);
   if(!canSave) $("notice").style.display="block";
   fill(); drawRoster(); drawLog(); render();
-  setTimeout(function(){ layOutTabs(); render(); }, 0);
+  setTimeout(function(){
+    layOutTabs(); render();
+    trySharedLink();
+  }, 0);
 })();
 
 /* ============================================================
@@ -3449,6 +3628,11 @@ Cloud.start = function(){
         cloudStatus("Connected as an admin.","ok");
       }
       discordState();
+      Cloud.notices();
+      if(Cloud.admin){ Cloud.pending(); }
+      setInterval(function(){
+        Cloud.notices(); if(Cloud.admin) Cloud.pending();
+      }, 60000);
       if(typeof refreshAdminUI==="function") refreshAdminUI();
       Cloud.pull();
       Cloud.queue.forEach(function(fn){ fn(); }); Cloud.queue = [];
@@ -3462,7 +3646,6 @@ Cloud.start = function(){
 /* Send one character up. Called after every local save. */
 function worthSaving(c){
   if(!c) return false;
-  if(c.pendingSecond) return true;
   if((c.name||"").trim()) return true;
   var spentAny = false;
   try { spentAny = STATS.some(function(s){ return (c.scores||{})[s.key] > 0; }); } catch(e){}
@@ -3558,6 +3741,170 @@ function showClaim(){
   var el = $("claimCode"); if(!el) return;
   el.textContent = cur.claim_code ? cur.claim_code : "—";
 }
+
+/* ============================================================
+   NOTICES — a player hears back; an admin sees the queue.
+   ============================================================ */
+Cloud.notices = function(){
+  if(!Cloud.ready) return;
+  Cloud.sb.from("notices").select("id,message,kind,seen,created_at")
+    .order("created_at",{ascending:false}).limit(30).then(function(r){
+      if(r.error || !r.data) return;
+      var list=r.data, unseen=list.filter(function(n){ return !n.seen; }).length;
+      var bell=$("bellBtn");
+      bell.style.display = list.length ? "" : "none";
+      bell.classList.toggle("has", unseen>0);
+      $("bellCount").textContent = unseen ? unseen : list.length;
+      $("noticeList").innerHTML = list.map(function(n){
+        var when=new Date(n.created_at).toLocaleString();
+        var head = n.kind==="approve" ? "Approved"
+                 : n.kind==="return"  ? "Sent back for changes"
+                 : n.kind==="deny"    ? "Denied" : "Notice";
+        return '<div class="n'+(n.seen?'':' unseen')+'"><b>'+head+'</b>'+
+          esc(n.message)+'<br><small>'+esc(when)+'</small></div>';
+      }).join("");
+    });
+};
+$("bellBtn").onclick=function(){
+  var box=$("noticeList");
+  var open = box.style.display!=="none";
+  box.style.display = open ? "none" : "";
+  if(!open && Cloud.ready){
+    Cloud.sb.from("notices").update({seen:true}).eq("seen",false).then(function(){
+      $("bellBtn").classList.remove("has"); });
+  }
+};
+
+/* ---- the admin queue ---- */
+function pendRow(c){
+  return "<tr><td><b>"+esc(c.name||"Unnamed")+"</b>"+
+    (c.house?" of House "+esc(c.house):"")+
+    "<br><span style='color:var(--ink-3)'>"+
+    esc([c.station,c.age&&("age "+c.age),c.player].filter(Boolean).join(" · "))+
+    "</span></td><td>"+
+    "<button data-open2='"+c.id+"'>Open</button>"+
+    "<button data-ok='"+c.id+"'>Approve</button>"+
+    "<button data-back='"+c.id+"'>Send back</button>"+
+    "<button data-no='"+c.id+"'>Deny</button></td></tr>";
+}
+Cloud.pending = function(){
+  if(!Cloud.ready || !Cloud.admin) return;
+  $("pendList").innerHTML="<p class='none'>Loading…</p>";
+  Cloud.sb.from("characters")
+    .select("id,name,house,station,age,player,updated_at")
+    .eq("needs_approval",true).eq("is_approved",false).eq("is_dead",false)
+    .order("updated_at").then(function(r){
+      if(r.error){ $("pendList").innerHTML="<p class='none'>"+esc(r.error.message)+"</p>"; return; }
+      var n=(r.data||[]).length;
+      $("pendCount").textContent = n ? n+" waiting" : "nothing waiting";
+      var tab=document.getElementById("adminTabBtn");
+      if(tab) tab.innerHTML = "Admin"+(n?'<span class="badge">'+n+'</span>':"");
+      $("pendList").innerHTML = n
+        ? "<table>"+r.data.map(pendRow).join("")+"</table>"
+        : "<p class='none'>Nothing waiting on you.</p>";
+    });
+};
+$("pendBtn").onclick=Cloud.pending;
+$("pendList").addEventListener("click",function(e){
+  var t=e.target, id;
+  if((id=t.getAttribute("data-open2"))){
+    Cloud.sb.from("characters").select("sheet").eq("id",id).single().then(function(r){
+      if(r.data&&r.data.sheet){ var c=r.data.sheet; c.id=id; openForeign(c); showTab("tabStats"); }
+    });
+    return;
+  }
+  var verdict = t.getAttribute("data-ok") ? "approve"
+              : t.getAttribute("data-back") ? "return"
+              : t.getAttribute("data-no") ? "deny" : null;
+  if(!verdict) return;
+  id = t.getAttribute("data-ok")||t.getAttribute("data-back")||t.getAttribute("data-no");
+  var msg = verdict==="approve" ? (prompt("A word with the approval, if you like:")||"")
+                                : (prompt("Tell them why:")||"");
+  Cloud.sb.rpc("judge_character",{cid:id, verdict:verdict, msg:msg}).then(function(r){
+    if(r.error){ alert(r.error.message); return; }
+    Cloud.pending();
+    flash(verdict==="approve"?"Approved, and they have been told."
+      :verdict==="return"?"Sent back with your note.":"Denied, and they have been told.");
+  });
+});
+
+/* ---- promote and demote by name, not by uuid ---- */
+var peopleCache=[];
+function drawPeople(q){
+  q=(q||"").toLowerCase().trim();
+  var list=peopleCache.filter(function(p){
+    return !q || ((p.goes_by||"")+" "+p.user_id).toLowerCase().indexOf(q)>-1; });
+  $("peopleList").innerHTML = list.length
+    ? "<table>"+list.map(function(p){
+        return "<tr><td><b>"+esc(p.goes_by||"(no player name yet)")+"</b>"+
+          (p.is_admin?" — <span style='color:var(--flag)'>admin</span>":"")+
+          "<br><span style='color:var(--ink-3)'>"+p.characters+" character"+
+          (p.characters===1?"":"s")+" · "+esc(String(p.user_id).slice(0,8))+"…</span></td>"+
+          "<td><button data-adm='"+p.user_id+"' data-make='"+(p.is_admin?"0":"1")+"'>"+
+          (p.is_admin?"Demote":"Make admin")+"</button></td></tr>";
+      }).join("")+"</table>"
+    : "<p class='none'>Nobody found.</p>";
+}
+Cloud.people = function(){
+  if(!Cloud.ready || !Cloud.admin) return;
+  $("peopleList").innerHTML="<p class='none'>Loading…</p>";
+  Cloud.sb.from("people").select("*").order("last_seen",{ascending:false}).then(function(r){
+    if(r.error){ $("peopleList").innerHTML="<p class='none'>"+esc(r.error.message)+"</p>"; return; }
+    peopleCache=r.data||[];
+    drawPeople($("peopleSearch").value);
+  });
+};
+$("peopleBtn").onclick=Cloud.people;
+$("peopleSearch").addEventListener("input",function(){ drawPeople(this.value); });
+$("peopleList").addEventListener("click",function(e){
+  var id=e.target.getAttribute("data-adm"); if(!id) return;
+  var make=e.target.getAttribute("data-make")==="1";
+  if(!confirm(make?"Give this person admin rights?":"Remove their admin rights?")) return;
+  Cloud.sb.rpc("set_admin",{target:id, make_admin:make}).then(function(r){
+    if(r.error){ alert(r.error.message); return; }
+    Cloud.people();
+  });
+});
+
+/* ---- the share link is the owner's to switch off ---- */
+$("f_shared").addEventListener("change",function(){
+  if(denied()){ this.checked=!cur.isPrivate ? true : false; return; }
+  cur.isPrivate = !this.checked;
+  Store.put(cur);
+  if(Cloud.ready) Cloud.sb.from("characters").update({is_private:cur.isPrivate})
+    .eq("id",cur.id).then(function(){});
+  record(this.checked?"Shared link switched on":"Shared link switched off",0,"");
+  flash(this.checked?"Anyone with the link can read this sheet."
+                   :"The link is off. Only you and the admins can see this sheet now.");
+});
+
+$("shareBtn").onclick=function(){
+  if(!cur.id){ alert("Save the character first."); return; }
+  var url = window.location.origin + window.location.pathname + "?view=" + cur.id;
+  function done(){ flash("Link copied. Paste it in your submission post."); }
+  if(navigator.clipboard) navigator.clipboard.writeText(url).then(done, fb); else fb();
+  function fb(){
+    var t=document.createElement("textarea"); t.value=url;
+    document.body.appendChild(t); t.select();
+    try{ document.execCommand("copy"); }catch(e){}
+    t.remove(); done();
+  }
+};
+
+$("regenBtn").onclick=function(){
+  if(!(window.Cloud && Cloud.ready)){ alert("Not connected to the server yet."); return; }
+  if(!confirm("This kills the old code for good. Anyone still holding it loses access. Continue?")) return;
+  Cloud.sb.rpc("regenerate_claim_code", { cid: cur.id }).then(function(r){
+    if(r.error){ alert("Could not regenerate: "+r.error.message); return; }
+    cur.claim_code = r.data;
+    showClaim();
+    $("regenNote").style.display = "";
+    setTimeout(function(){ $("regenNote").style.display = "none"; }, 6000);
+    record("Recovery code regenerated", 0, "");
+  });
+};
+
+
 
 /* Recover a sheet on a new device. */
 /* An anonymous account is stored per web address. Move the site to a new
