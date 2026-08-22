@@ -3113,7 +3113,8 @@ function layOutTabs(){
   /* label every loose section by its heading so it can be placed */
   var loose = [];
   Array.prototype.slice.call(document.querySelectorAll("section")).forEach(function(sec){
-    if(sec.closest("#tabEquipment") || sec.closest("#tabFamily") || sec.closest("#tabAges")) return;
+    if(sec.closest("#tabEquipment") || sec.closest("#tabFamily") || sec.closest("#tabAges") ||
+       sec.closest("#tabAdmin")) return;
     var h = sec.querySelector("h2");
     sec.__label = h ? h.textContent.trim() : "__points";
     loose.push(sec);
