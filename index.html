@@ -969,7 +969,6 @@ h2{letter-spacing:.16em}
     <input id="f_buildOverride" data-f="buildOverride" autocomplete="off" placeholder="Leave blank to use the computed build">
   </div>
   <p class="reading" id="reading"></p>
-  </div>
   <div class="bar" style="margin-top:12px">
     <button id="readingCopy">Copy build summary</button>
     <span class="rlen" id="readingLen"></span>
@@ -1753,7 +1752,22 @@ var Store = {
     if(canSave){ try{ localStorage.setItem(k,s); }catch(e){} } else memory[k]=s; },
   remove:function(k){ if(canSave){ try{ localStorage.removeItem(k); }catch(e){} } else delete memory[k]; },
   all:function(){ return this.keys().map(this.read.bind(this)).filter(Boolean); },
-  put:function(c){ c.updated=new Date().toISOString(); this.write(PRE+"char."+c.id,c);
+  put:function(c){ c.updated=new Date().toISOString();
+    if(c.is_approved && !c._foreign && !Cloud.admin){
+      /* Editing an approved character sends it back for another look —
+         mirrors the DB trigger, so the UI never lies about status while
+         waiting on a network round trip. */
+      c.is_approved=false; c.submitted=true;
+      c.log = c.log||[];
+      c.log.unshift({t:stamp(), what:"Edited after approval — sent back for review", d:0, note:""});
+      if(c.log.length>400) c.log.length=400;
+      if(c===cur){
+        if(typeof renderStatus==="function") renderStatus();
+        if(typeof drawLog==="function") drawLog();
+        if(typeof flash==="function") flash("This was approved — editing it sends it back for another look.");
+      }
+    }
+    this.write(PRE+"char."+c.id,c);
     if(typeof flashSaved==="function") flashSaved();
     if(window.Cloud && Cloud.ready) Cloud.push(c); },
   del:function(id){ this.remove(PRE+"char."+id); },
@@ -1934,11 +1948,6 @@ function isNobleborn(){
   return !!(h && h.rank !== "x" && cur.station === "Noble house");
 }
 function isMale(){ return /^(m|man|boy|male|lord|ser)/i.test((cur.gender||"").trim()); }
-/* The stag's blood runs strong in the men of Storm's End. */
-function isBaratheonMan(){
-  var h=lookupHouse(cur.house);
-  return !!(h && h.n==="Baratheon" && isMale());
-}
 function heritage(){ return HMAP_H[cur.heritage] || null; }
 function bodyType(){ return BMAP[cur.body] || null; }
 function isValyrian(){
@@ -1989,7 +1998,6 @@ function whyCore(key){
   out.push({n:"Points spent", d:v});
   if(key==="knowledge" && isNobleborn()) out.push({n:"Nobleborn", d:5});
   if(key==="beauty" && isValyrian() && cur.heritage!=="valyrian") out.push({n:"Valyrian blood", d:10});
-  if(key==="athletics" && isBaratheonMan()) out.push({n:"Baratheon blood", d:6});
   var h=heritage();
   if(h && h.core[key]) out.push({n:"Heritage — "+h.name, d:h.core[key]});
   injuryList().forEach(function(i){ if(i.core[key]) out.push({n:i.name, d:i.core[key]}); });
@@ -2082,7 +2090,6 @@ function bonusFor(key){
   var b = 0;
   if(key === "knowledge" && isNobleborn()) b += 5;
   if(key === "beauty" && isValyrian() && cur.heritage !== "valyrian") b += 10;
-  if(key === "athletics" && isBaratheonMan()) b += 6;
   var te=traitEffects();
   if(te[key]) b += te[key];
   var h=heritage();
@@ -2821,8 +2828,6 @@ function renderBonusNote(){
   var bits=[];
   if(isNobleborn()) bits.push("Nobleborn — <b>+5 Knowledge</b>");
   if(isValyrian()) bits.push("Valyrian descent — <b>+10 Beauty</b>");
-  if(isBaratheonMan()) bits.push("The stag's blood — <b>+6 Natural Athletics</b>, "+
-    "which carries on into Strength and Defense at arms");
   if(athleticsStep()) bits.push("Natural Athletics "+total("athletics")+
     " — <b>+"+athleticsStep()+" Strength and Defense</b> on the knight sheet");
   var el=$("bonusNote");
@@ -3092,11 +3097,6 @@ function showTab(id){
   /* A stored preference can outlive a rename. Rather than land on a
      blank page with nothing active, fall back to the first real tab. */
   if(!panels.some(function(p){ return p.id === id; })){
-    id = panels.length ? panels[0].id : id;
-  }
-  /* The admin tab (registry, approvals) is never reachable by a stored
-     preference alone — only an admin session may land here. */
-  if(id === "tabAdmin" && !isAdmin()){
     id = panels.length ? panels[0].id : id;
   }
   panels.forEach(function(p){ p.classList.toggle("active", p.id === id); });
@@ -3493,7 +3493,6 @@ function readingText(){
   }
   if(isNobleborn()) g.push("Nobleborn: +5 Knowledge");
   if(isValyrian()) g.push("Valyrian descent: +10 Beauty");
-  if(isBaratheonMan()) g.push("Baratheon blood: +6 Natural Athletics");
   if(cur.anomaly) g.push("Anomaly: youth caps raised");
   if(g.length) out.push("\nGRANTED\n"+g.join("\n"));
 
@@ -3831,7 +3830,7 @@ var SUPABASE_URL = "https://dxcgzvpxjixztrcylsla.supabase.co";
 var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4Y2d6dnB4aml4enRyY3lsc2xhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MTg2MTQsImV4cCI6MjEwMjQ5NDYxNH0.XFBYVHPxsryy9z3pYYSv_wFQI-cHNzD3Ab7nQgFtuHY";
 /* ============================================================ */
 
-var Cloud = { on:false, ready:false, uid:null, admin:false, sb:null, queue:[] };
+var Cloud = { on:false, ready:false, uid:null, admin:false, owner:false, sb:null, queue:[] };
 
 function cloudStatus(msg, cls){
   var el = $("srvStatus"); if(!el) return;
@@ -3861,9 +3860,11 @@ Cloud.start = function(){
       if(!u) throw new Error("no session");
       Cloud.uid = u.id; Cloud.on = true; Cloud.ready = true;
       cloudStatus("Connected. Your characters save to the server.","ok");
-      return Cloud.sb.from("profiles").select("is_admin").eq("user_id", Cloud.uid).single();
+      return Cloud.sb.from("profiles").select("is_admin,is_owner").eq("user_id", Cloud.uid).single();
     }).then(function(p){
+      if(p && p.error) console.error("profile fetch failed — is the schema up to date?", p.error.message);
       Cloud.admin = !!(p && p.data && p.data.is_admin);
+      Cloud.owner = !!(p && p.data && p.data.is_owner);
       if(Cloud.admin){
         if($("purgeBtn")) $("purgeBtn").style.display = "";
         cloudStatus("Connected as an admin.","ok");
@@ -4090,11 +4091,14 @@ function drawPeople(q){
   $("peopleList").innerHTML = list.length
     ? "<table>"+list.map(function(p){
         return "<tr><td><b>"+esc(p.goes_by||"(no player name yet)")+"</b>"+
-          (p.is_admin?" — <span style='color:var(--flag)'>admin</span>":"")+
+          (p.is_owner?" — <span style='color:var(--flag)'>owner</span>"
+            :p.is_admin?" — <span style='color:var(--flag)'>admin</span>":"")+
           "<br><span style='color:var(--ink-3)'>"+p.characters+" character"+
           (p.characters===1?"":"s")+" · "+esc(String(p.user_id).slice(0,8))+"…</span></td>"+
-          "<td><button data-adm='"+p.user_id+"' data-make='"+(p.is_admin?"0":"1")+"'>"+
-          (p.is_admin?"Demote":"Make admin")+"</button></td></tr>";
+          "<td>"+(Cloud.owner && !p.is_owner
+            ? "<button data-adm='"+p.user_id+"' data-make='"+(p.is_admin?"0":"1")+"'>"+
+              (p.is_admin?"Demote":"Make admin")+"</button>"
+            : "")+"</td></tr>";
       }).join("")+"</table>"
     : "<p class='none'>Nobody found.</p>";
 }
@@ -4230,9 +4234,10 @@ $("sessRestore").onclick = function(){
     $("sessIn").value = "";
     var u = r.data && (r.data.user || (r.data.session && r.data.session.user));
     Cloud.uid = u ? u.id : Cloud.uid;
-    return Cloud.sb.from("profiles").select("is_admin").eq("user_id", Cloud.uid).single()
+    return Cloud.sb.from("profiles").select("is_admin,is_owner").eq("user_id", Cloud.uid).single()
       .then(function(p){
         Cloud.admin = !!(p && p.data && p.data.is_admin);
+        Cloud.owner = !!(p && p.data && p.data.is_owner);
         cloudStatus("Account restored"+(Cloud.admin?" — admin":"")+". Loading your characters…","ok");
         Cloud.pull();
         render();
