@@ -722,6 +722,7 @@ h2{letter-spacing:.16em}
   <label for="f_personality" style="margin-top:14px">In their own right</label>
   <textarea id="f_personality" data-f="personality" rows="6"
     placeholder="How they speak, how they treat servants, what they are like drunk, what they will not do."></textarea>
+  <p class="hint" id="personalityLen"></p>
 </section>
 
 <section>
@@ -729,6 +730,7 @@ h2{letter-spacing:.16em}
   <label for="f_backstory">Who they are and where they came from</label>
   <textarea id="f_backstory" data-f="backstory" rows="8"
     placeholder="Birth, upbringing, family, the things that shaped them."></textarea>
+  <p class="hint" id="backstoryLen"></p>
   <label for="f_history" style="margin-top:14px">History — what they have done since</label>
   <textarea id="f_history" data-f="history" rows="6"
     placeholder="Battles, betrothals, wounds, journeys, feuds. Add to it as the game runs."></textarea>
@@ -2180,6 +2182,30 @@ function left(){ return budget()-spent(); }
 function tierOf(v){ return v<=0 ? 0 : Math.max(1, Math.min(7, Math.ceil(v / MAX * 7))); }
 function stamp(){ var d=new Date(), p=function(n){ return (n<10?"0":"")+n; };
   return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes()); }
+/* A rough sentence count, good enough to gate on without being pedantic
+   about abbreviations. Counts runs of .!? followed by space or end. */
+function sentenceCount(t){
+  return ((t||"").trim().match(/[.!?]+(\s|$)/g) || []).length;
+}
+var NARRATIVE_MIN = 3;
+function narrativeReady(){
+  return sentenceCount(cur.personality) >= NARRATIVE_MIN &&
+         sentenceCount(cur.backstory) >= NARRATIVE_MIN;
+}
+function renderNarrativeHints(){
+  [["personality","personalityLen"],["backstory","backstoryLen"]].forEach(function(pair){
+    var n = sentenceCount(cur[pair[0]]), el = $(pair[1]);
+    if(!el) return;
+    if(n >= NARRATIVE_MIN){
+      el.textContent = "Looks good — " + n + " sentence" + (n===1?"":"s") + ".";
+      el.style.color = "#3f7d4a";
+    } else {
+      el.textContent = "Needs at least " + NARRATIVE_MIN + " sentences before you can submit — "+
+        n + " so far.";
+      el.style.color = "var(--alert)";
+    }
+  });
+}
 function record(what,delta,note){
   if(!editable()) return;
   var entry={t:stamp(),what:what,d:delta,note:note||""};
@@ -2363,6 +2389,7 @@ $("awardBtn").onclick=function(){
 
 function v0(k){ return cur.scores[k]||0; }
 function render(){
+  renderNarrativeHints();
   var remaining=left(), over=remaining<0;
   STATS.forEach(function(s,i){
     var hard=capFor(s.key), ceil=Math.min(MAX,hard,v0(s.key)+remaining);
@@ -3612,6 +3639,11 @@ function renderStatus(){
 $("submitBtn").onclick=function(){
   if(denied()) return;
   if(!(cur.name||"").trim()){ flash("Give them a name first."); return; }
+  if(!narrativeReady()){
+    flash("Personality and backstory each need at least "+NARRATIVE_MIN+
+      " sentences before you can submit.");
+    return;
+  }
   if(left()>0 && !confirm(left()+" points are still unspent. Submit anyway?")) return;
   cur.submitted=true;
   record("Submitted for approval",0,"");
