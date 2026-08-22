@@ -1753,7 +1753,7 @@ var Store = {
   remove:function(k){ if(canSave){ try{ localStorage.removeItem(k); }catch(e){} } else delete memory[k]; },
   all:function(){ return this.keys().map(this.read.bind(this)).filter(Boolean); },
   put:function(c){ c.updated=new Date().toISOString();
-    if(c.is_approved && !c._foreign && !Cloud.admin){
+    if(c.is_approved && !c._foreign && window.Cloud && !Cloud.admin){
       /* Editing an approved character sends it back for another look —
          mirrors the DB trigger, so the UI never lies about status while
          waiting on a network round trip. */
