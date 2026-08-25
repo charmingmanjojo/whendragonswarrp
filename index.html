@@ -3888,7 +3888,33 @@ Cloud.start = function(){
   if(!SUPABASE_URL || !SUPABASE_KEY){
     return;
   }
-  cloudStatus("Connecting…");
+  /* Discord sends you back with the outcome in the URL, not as a normal
+     click response — Supabase's own client never surfaces this on its own,
+     so without checking it, a failed Discord connect just silently reloads
+     the page with zero explanation. Most commonly this fires when this
+     Discord account is already linked to a DIFFERENT session (usually
+     after switching browsers/devices) — the fix there isn't "link" but
+     "sign in", so retry that way automatically rather than leaving the
+     player stuck. */
+  var hadOAuthError = false;
+  (function(){
+    var raw = (window.location.hash||"").replace(/^#/,"") ||
+              (window.location.search||"").replace(/^\?/,"");
+    var params = new URLSearchParams(raw);
+    var err = params.get("error_description") || params.get("error");
+    if(err){
+      hadOAuthError = true;
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+      if(/already|exists|registered|linked/i.test(err)){
+        cloudStatus("This Discord is already tied to another account on this site — "+
+          "signing you into it now instead of making a new one…","ok");
+        window.__discordRecoverOnReady = true;
+      } else {
+        cloudStatus("Discord connect failed: "+decodeURIComponent(err),"bad");
+      }
+    }
+  })();
+  if(!hadOAuthError) cloudStatus("Connecting…");
   loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js", function(){
     Cloud.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     Cloud.sb.auth.getSession().then(function(r){
@@ -3909,6 +3935,11 @@ Cloud.start = function(){
         cloudStatus("Connected as an admin.","ok");
       }
       discordState();
+      if(window.__discordRecoverOnReady){
+        window.__discordRecoverOnReady = false;
+        Cloud.sb.auth.signInWithOAuth({ provider:"discord",
+          options:{ redirectTo: window.location.href.split("#")[0].split("?")[0] } });
+      }
       Cloud.notices();
       if(Cloud.admin){ Cloud.pending(); }
       setInterval(function(){
