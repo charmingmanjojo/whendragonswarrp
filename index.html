@@ -691,7 +691,8 @@ h2{letter-spacing:.16em}
       <button id="rejectBtn">Send back</button>
       <button id="deadBtn">Mark dead</button>
     </span>
-  
+  </div>
+
   <p class="hint">Recovery code for this character: <b id="claimCode">—</b>
      <button id="regenBtn" class="tiny">Regenerate</button></p>
   <p class="hint" id="regenNote" style="display:none">The old code stopped working just now.
@@ -1076,10 +1077,6 @@ h2{letter-spacing:.16em}
   </div>
   <div id="browseList"></div>
 </section>
-
-<section id="serverSection" style="display:none">
-  <h2>Server</h2>
-  
 
 <footer>Fan-made roleplay tool. Data stays on this device unless a server is configured.</footer>
 </div>
@@ -1756,22 +1753,33 @@ var Store = {
   all:function(){ return this.keys().map(this.read.bind(this)).filter(Boolean); },
   put:function(c){ c.updated=new Date().toISOString();
     if(c.is_approved && !c._foreign && window.Cloud && !Cloud.admin){
-      /* Editing an approved character sends it back for another look —
-         mirrors the DB trigger, so the UI never lies about status while
-         waiting on a network round trip. */
-      c.is_approved=false; c.submitted=true;
-      c.log = c.log||[];
-      c.log.unshift({t:stamp(), what:"Edited after approval — sent back for review", d:0, note:""});
-      if(c.log.length>400) c.log.length=400;
-      if(c===cur){
-        if(typeof renderStatus==="function") renderStatus();
-        if(typeof drawLog==="function") drawLog();
-        if(typeof flash==="function") flash("This was approved — editing it sends it back for another look.");
+      /* Only a real change to the BUILD (stats, traits, knight, command)
+         sends an approved character back for review — not a typo fix in
+         Appearance, not the age-up flow, which already has its own
+         lightweight review path via needs_approval. Comparing every
+         keystroke against the state as of approval, not the previous
+         keystroke, so fixing a stat and fixing it back doesn't dodge this. */
+      var snap = JSON.stringify({scores:c.scores, traits:c.traits, knight:c.knight, command:c.command});
+      if(!(c.id in Store._approvedSnap)){
+        Store._approvedSnap[c.id] = snap;
+      } else if(Store._approvedSnap[c.id] !== snap){
+        c.is_approved=false; c.submitted=true;
+        c.log = c.log||[];
+        c.log.unshift({t:stamp(), what:"Build edited after approval — sent back for review", d:0, note:""});
+        if(c.log.length>400) c.log.length=400;
+        delete Store._approvedSnap[c.id];
+        if(c===cur){
+          if(typeof renderStatus==="function") renderStatus();
+          if(typeof drawLog==="function") drawLog();
+          if(typeof flash==="function") flash("Their build was approved — changing stats, traits, or knight "+
+            "totals sends it back for another look. Everything else is fine to edit freely.");
+        }
       }
     }
     this.write(PRE+"char."+c.id,c);
     if(typeof flashSaved==="function") flashSaved();
     if(window.Cloud && Cloud.ready) Cloud.push(c); },
+  _approvedSnap:{},
   del:function(id){ this.remove(PRE+"char."+id); },
   pref:function(k,v){ if(arguments.length>1) this.write(PRE+k,v); return this.read(PRE+k); }
 };
@@ -3878,10 +3886,8 @@ function loadScript(src, done){
 
 Cloud.start = function(){
   if(!SUPABASE_URL || !SUPABASE_KEY){
-    $("serverSection").style.display = "none";
     return;
   }
-  $("serverSection").style.display = "";
   cloudStatus("Connecting…");
   loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js", function(){
     Cloud.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
