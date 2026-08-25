@@ -4230,8 +4230,24 @@ $("discordBtn").onclick = function(){
                                       : Cloud.sb.auth.signInWithOAuth(opts);
   Promise.resolve(fn).then(function(r){
     if(r && r.error){
-      cloudStatus("Discord refused: "+r.error.message+
-        " (an admin must switch Discord on in Supabase first)","bad");
+      /* "Connect Discord" attaches Discord to THIS browser's session. If that
+         Discord account is already attached to a different (older) session —
+         the usual case after switching devices or clearing storage — Supabase
+         refuses to attach it twice. That's not an admin-config problem, it's
+         "sign into the existing account instead", so retry as a plain sign-in
+         rather than a link, which finds and logs into that existing account. */
+      if(/already|exists|registered|linked/i.test(r.error.message)){
+        cloudStatus("This Discord is already tied to another account on this site — "+
+          "signing you into it now instead of making a new one…","ok");
+        Cloud.sb.auth.signInWithOAuth(opts).then(function(r2){
+          if(r2 && r2.error){
+            cloudStatus("Could not sign in with Discord: "+r2.error.message,"bad");
+          }
+        });
+      } else {
+        cloudStatus("Discord refused: "+r.error.message+
+          " (an admin must switch Discord on in Supabase first)","bad");
+      }
     }
   });
 };
