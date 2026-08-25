@@ -3974,7 +3974,7 @@ Cloud.push = function(c){
   var safe = JSON.parse(JSON.stringify(c));
   delete safe.prodigy;
   var row = {
-    id: c.id, owner: Cloud.uid, sheet: safe,
+    id: c.id, sheet: safe,
     name: c.name||"", house: c.house||"", station: c.station||"", age: c.age||"",
     gender: c.gender||"", height: c.height||"", titles: c.titles||"", region: c.region||"",
     seat: c.seat||"", words: c.words||"", sigil: c.sigil||"", born: c.born||"",
@@ -3983,6 +3983,10 @@ Cloud.push = function(c){
     base: c.base||BASE, awarded: c.awarded||0, scores: c.scores,
     needs_approval: !!c.approval
   };
+  /* Only include owner when this is genuinely OUR OWN character. An admin
+     reviewing or fixing someone else's sheet must never — even by accident,
+     even via a stray keystroke while looking at it — end up owning it. */
+  if(!c._foreign) row.owner = Cloud.uid;
   Cloud.sb.from("characters").upsert(row).then(function(r){
     if(r.error) console.error("save failed", r.error.message);
   });
@@ -4359,7 +4363,9 @@ function drawBrowse(filter){
     var sub=[c.house?"House "+c.house:"", c.station, c.age?"age "+c.age:"", c.player]
       .filter(Boolean).join(" · ");
     return "<tr><td><b>"+esc(c.name||"Unnamed")+"</b><br>"+
-      "<span style='color:var(--ink-3)'>"+esc(sub)+"</span></td>"+
+      "<span style='color:var(--ink-3)'>"+esc(sub)+"</span><br>"+
+      "<span class='rlen' style='font-family:monospace;user-select:all'>owner: "+
+      esc(c.owner||"—")+"</span></td>"+
       "<td>"+(c.is_dead?"<b>dead</b>":(c.is_approved?"approved":
         (c.needs_approval?"<b style='color:var(--alert)'>waiting</b>":"draft")))+"</td>"+
       "<td><button data-view='"+c.id+"'>View</button>"+
@@ -4372,7 +4378,7 @@ Cloud.browse = function(){
     "<p class='none'>The registry needs the server. Working offline.</p>"; return; }
   $("browseList").innerHTML="<p class='none'>Loading…</p>";
   Cloud.sb.from("characters")
-    .select("id,name,house,station,age,player,is_approved,is_dead,needs_approval,updated_at")
+    .select("id,name,house,station,age,player,owner,is_approved,is_dead,needs_approval,updated_at")
     .order("house",{ascending:true}).then(function(r){
       if(r.error){ $("browseList").innerHTML="<p class='none'>"+esc(r.error.message)+"</p>"; return; }
       browseCache=r.data||[];
