@@ -1028,6 +1028,13 @@ h2{letter-spacing:.16em}
     <div class="bar">
       <button id="peopleBtn">Load people</button>
       <input type="text" id="peopleSearch" placeholder="Search by Discord name or player name" style="flex:1 1 180px">
+      <select id="peopleFilter">
+        <option value="all">Everyone</option>
+        <option value="discord">Discord connected</option>
+        <option value="none">Not connected</option>
+        <option value="admin">Admins</option>
+      </select>
+      <span class="rlen" id="peopleCount"></span>
     </div>
     <div id="peopleList"></div>
   </section>
@@ -4160,26 +4167,34 @@ $("pendList").addEventListener("click",function(e){
 var peopleCache=[];
 function drawPeople(q){
   q=(q||"").toLowerCase().trim();
+  var mode = ($("peopleFilter")||{}).value || "all";
   var list=peopleCache.filter(function(p){
-    return !q || ((p.goes_by||"")+" "+(p.discord_name||"")+" "+p.user_id).toLowerCase().indexOf(q)>-1; });
+    if(mode==="discord" && !p.has_discord) return false;
+    if(mode==="none" && p.has_discord) return false;
+    if(mode==="admin" && !p.is_admin && !p.is_owner) return false;
+    return !q || ((p.goes_by||"")+" "+(p.discord_name||"")+" "+p.user_id).toLowerCase().indexOf(q)>-1;
+  });
+  $("peopleCount").textContent = list.length + " of " + peopleCache.length;
   $("peopleList").innerHTML = list.length
     ? "<table>"+list.map(function(p){
         var who = p.discord_name
           ? esc(p.discord_name)+(p.goes_by ? " <span style='color:var(--ink-3)'>("+esc(p.goes_by)+")</span>" : "")
           : (p.goes_by ? esc(p.goes_by) : "(no name yet)");
+        var chars = (p.character_list||[]).map(function(c){
+          return esc(c.name||"Unnamed");
+        }).join(", ") || "<span style='color:var(--ink-3)'>none yet</span>";
         return "<tr><td><b>"+who+"</b>"+
           (p.is_owner?" — <span style='color:var(--flag)'>owner</span>"
             :p.is_admin?" — <span style='color:var(--flag)'>admin</span>":"")+
           (p.has_discord ? "" : " <span class='rlen' style='color:var(--alert)'>not on Discord</span>")+
-          "<br><span style='color:var(--ink-3)'>"+p.characters+" character"+
-          (p.characters===1?"":"s")+"</span><br>"+
+          "<br><span style='color:var(--ink-3)'>Characters: </span>"+chars+"<br>"+
           "<span class='rlen' style='font-family:monospace;user-select:all'>"+esc(p.user_id)+"</span></td>"+
           "<td>"+(Cloud.owner && !p.is_owner
             ? "<button data-adm='"+p.user_id+"' data-make='"+(p.is_admin?"0":"1")+"'>"+
               (p.is_admin?"Demote":"Make admin")+"</button>"
             : "")+"</td></tr>";
       }).join("")+"</table>"
-    : "<p class='none'>Nobody found.</p>";
+    : "<p class='none'>Nobody matches that.</p>";
 }
 Cloud.people = function(){
   if(!Cloud.ready || !Cloud.admin) return;
@@ -4192,6 +4207,7 @@ Cloud.people = function(){
 };
 $("peopleBtn").onclick=Cloud.people;
 $("peopleSearch").addEventListener("input",function(){ drawPeople(this.value); });
+$("peopleFilter").addEventListener("change",function(){ drawPeople($("peopleSearch").value); });
 $("peopleList").addEventListener("click",function(e){
   var id=e.target.getAttribute("data-adm"); if(!id) return;
   var make=e.target.getAttribute("data-make")==="1";
