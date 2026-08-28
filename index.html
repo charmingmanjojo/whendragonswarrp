@@ -560,6 +560,11 @@ h2{letter-spacing:.16em}
   <div class="artHead">
     <h1 id="artName">Name</h1>
     <p id="artByline"><img id="bylineIcon" class="bylineIcon" alt=""><span id="bylineText"></span></p>
+    <p id="artEmptyWarning" class="notice" style="display:none">This sheet has almost nothing filled
+      in — no stats, no personality, no backstory. If the player says they finished it, this is
+      likely a sync problem rather than an actual empty sheet: have them open their own character,
+      make any small edit (even just re-typing a letter and deleting it), and check back once
+      they're clearly connected. Approving as-is is not recommended.</p>
   </div>
   <div class="artBody">
     <aside class="infobox">
@@ -3239,6 +3244,15 @@ function renderArticle(){
   if(arms){ bIco.src = "data:image/webp;base64,"+arms.a.img; bIco.style.display = ""; }
   else { bIco.removeAttribute("src"); bIco.style.display = "none"; }
 
+  /* A near-empty sheet reaching this view almost always means the data
+     never finished syncing to the cloud, not that the player wrote
+     nothing — flag it plainly rather than let it look like a normal,
+     if bare, submission. */
+  var hasAnyStat = STATS.some(function(s){ return (cur.scores||{})[s.key] > 0; });
+  var looksEmpty = !hasAnyStat && !(cur.personality||"").trim() &&
+    !(cur.backstory||"").trim() && !(cur.appearance||"").trim();
+  $("artEmptyWarning").style.display = looksEmpty ? "" : "none";
+
   /* the band inside the infobox: name, one-line role, sigil either side
      when the house has one on record */
   $("infoBandName").textContent = who;
@@ -3971,7 +3985,15 @@ function worthSaving(c){
   return spentAny || !!(c.house||"").trim() || !!(c.player||"").trim();
 }
 Cloud.push = function(c){
-  if(!Cloud.ready) return;
+  if(!Cloud.ready){
+    /* Don't silently drop the save — on a slow connection, or if the
+       player edits in the brief window before the connection finishes,
+       this used to mean the cloud copy never got that data at all.
+       Locally everything looked fine; only what admins and shared
+       links see was actually missing. Queue it and replay once ready. */
+    Cloud.queue.push(function(){ Cloud.push(c); });
+    return;
+  }
   if(c._foreign && !Cloud.admin) return;
   /* A blank sheet is somebody who opened the page and left. Do not
      litter the registry with them. */
