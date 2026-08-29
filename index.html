@@ -1268,7 +1268,7 @@ var DETAIL = {
 };
 
 /* Age of the setting. Change YEAR and everything follows. */
-var YEAR = 90, MIN_AGE = 6, MAX_AGE = 90;
+var YEAR = 96, MIN_AGE = 6, MAX_AGE = 90;
 
 /* Houses that do not fit the year. Admins may still allow them. */
 var LATE = {
@@ -4010,7 +4010,11 @@ Cloud.push = function(c){
     player: c.player||"", liege: c.liege||"",
     father: c.father||"", mother: c.mother||"", spouse: c.spouse||"",
     base: c.base||BASE, awarded: c.awarded||0, scores: c.scores,
-    needs_approval: !!c.approval
+    /* A character submitted for review must reach the admin queue. This used
+       to key off c.approval alone, which is ONLY ever set by the age-up flow —
+       so an ordinary "Submit for approval" set c.submitted, sent needs_approval
+       as false, and silently never appeared in "Waiting on you" at all. */
+    needs_approval: (!!c.approval || !!c.submitted) && !c.is_approved
   };
   /* Only include owner when this is genuinely OUR OWN character. An admin
      reviewing or fixing someone else's sheet must never — even by accident,
@@ -4659,11 +4663,19 @@ $("ageRequestBtn").onclick=function(){
   if(!na || na<=(+cur.age||0)){ alert("Enter an age older than the current one."); return; }
   if(!cur.ageHistory) cur.ageHistory=[];
   cur.ageHistory.push(ageSnapshot());
-  cur.pendingAgeUp = {newAge:na, reason:reason, requestedAt:new Date().toISOString()};
-  cur.approval = "Age-up to "+na+" awaiting admin approval";
-  record("Requested age-up to "+na,0,reason);
+  /* Age-ups apply straight away now rather than waiting on an admin. The
+     previous step is still kept in ageHistory as its own tab, so nothing
+     about the record is lost by skipping the review. */
+  cur.age = na;
+  cur.pendingAgeUp = null;
+  cur.approval = "";
+  STATS.forEach(function(st){
+    var cap = capFor(st.key);
+    if(cur.scores[st.key] > cap) cur.scores[st.key] = cap;
+  });
+  record("Aged up to "+na,0,reason);
   Store.put(cur); $("ageNewAge").value=""; $("ageReason").value="";
-  renderAges();
+  renderAges(); render(); fill();
 };
 
 Cloud.start();
